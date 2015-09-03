@@ -48,6 +48,7 @@ console.log("---------------------------------------------------");
                         activeEntityImplementation: false,
                         activeEntityMapping: false,
                         activeEntityAlias: null,
+                        activeInstanceAlias: null,
                         activeEntityInstance: false
                     };
 
@@ -61,6 +62,16 @@ console.error(path, "onopenobject", key, state);
                         } else
                         if (state.activeEntityMapping) {
                             state.activeEntityMapping.emit("openobject", key);
+                        } else
+                        if (state.activeEntityInstance === true) {
+                                state.activeEntityInstance = config.registerEntityInstanceDeclaration(
+                                    state.activeEntityAlias,
+                                    state.activeInstanceAlias
+                                );
+                                state.activeEntityInstance.once("end", function () {
+                                    state.activeEntityInstance = null;
+                                });
+                                state.activeEntityInstance.emit("key", key);
                         } else
                         if (state.activeEntityInstance) {
                             state.activeEntityInstance.emit("openobject", key);
@@ -82,13 +93,8 @@ console.error(path, "onopenobject", key, state);
                                 }
                             } else
                             if (/^\$.+/.test(key)) {
-console.log("INIT ENTITY INSTANCE", key);                                
-                                state.activeEntityInstance = config.registerEntityInstanceDeclaration(
-                                    state.activeEntityAlias,
-                                    key.substring(1)
-                                );
-console.log("INIT ENTITY INSTANCE", state.activeEntityInstance);                                
-
+                                state.activeInstanceAlias = key.substring(1);
+                                state.activeEntityInstance = true;
                             } else {
 
     console.error(path, "NOT HANDLED onopenobject", key);
@@ -96,64 +102,6 @@ console.log("INIT ENTITY INSTANCE", state.activeEntityInstance);
                             }
                         }
                         state.objectPath.push(key);
-                    });
-                    stream.on("closeobject", function () {
-
-console.log("ON OBJECT CLOSE", state.objectPath);
-
-                        state.objectPath.pop();
-
-                        if (state.activeEntityImplementation) {
-                            state.activeEntityImplementation.emit("closeobject");
-                        } else
-                        if (state.activeEntityMapping) {
-                            state.activeEntityMapping.emit("closeobject");
-                            if (state.objectPath.length === 1) {
-                                state.activeEntityMapping = null;
-                            }
-                        } else
-                        if (state.activeEntityInstance) {
-                            state.activeEntityInstance.emit("closeobject");
-                            if (state.objectPath.length === 1) {
-                                state.activeEntityInstance = null;
-                            }
-                        } else {
-/*                            
-                            if (state.onObjectClose[state.objectPath.length]) {
-                                state.onObjectClose[state.objectPath.length].forEach(function (func) {
-                                    func();
-                                });
-                                delete state.onObjectClose[state.objectPath.length];
-                            }
-*/
-                        }
-                    });
-                    
-                    stream.on("value", function (value) {
-
-console.error(path, "onvalue", value, state.objectPath);
-
-                        if (state.activeEntityImplementation === true) {
-                            state.activeEntityImplementation = config.registerEntityImplementation(
-                                LIB.path.join(path, "..", value)
-                            );
-                            return;
-                        } else
-                        if (state.activeEntityImplementation) {
-                            state.activeEntityImplementation.emit("value", value);
-                        } else
-                        if (state.activeEntityMapping === true) {
-                            state.activeEntityMapping = config.registerEntityMappingDeclaration(
-                                state.objectPath[1],
-                                LIB.path.join(path, "..", value)
-                            );
-                        } else
-                        if (state.activeEntityMapping) {
-                            state.activeEntityMapping.emit("value", value);
-                        } else {
-
-console.error(path, "NOT HANDLED onvalue", value, state.objectPath);
-                        }
                     });
 
                     stream.on("key", function (key) {
@@ -171,23 +119,76 @@ console.error(path, "NOT HANDLED onvalue", value, state.objectPath);
                         } else
                         if (/^@.+/.test(key)) {
                             state.activeEntityAlias = key.substring(1);
-
-
-/*            
-                        if (/^@/.test(key)) {
-                            state.entityAlias.push(key.substring(1));
-                            if (!state.onObjectClose[state.objectPath.length]) {
-                                state.onObjectClose[state.objectPath.length] = [];
-                            }
-                            state.onObjectClose[state.objectPath.length].push(function () {
-                                state.entityAlias.pop();
-                            });
-*/
+                        } else
+                        if (/^\$.+/.test(key)) {
+                            state.activeInstanceAlias = key.substring(1);
+                            state.activeEntityInstance = true;
                         } else {
             console.error(path, "NOT HANDLED onkey", key, state.objectPath);
 
                         }
                     });
+
+                    stream.on("value", function (value) {
+
+//console.error(path, "onvalue", value, state.objectPath);
+
+                        if (state.activeEntityImplementation === true) {
+                            state.activeEntityImplementation = config.registerEntityImplementation(
+                                LIB.path.join(path, "..", value)
+                            );
+                            state.activeEntityImplementation.once("end", function () {
+                                state.activeEntityImplementation = null;
+                            });
+                        } else
+                        if (state.activeEntityImplementation) {
+                            state.activeEntityImplementation.emit("value", value);
+                        } else
+                        if (state.activeEntityMapping === true) {
+                            state.activeEntityMapping = config.registerEntityMappingDeclaration(
+                                state.objectPath[1],
+                                LIB.path.join(path, "..", value)
+                            );
+                            state.activeEntityMapping.once("end", function () {
+                                state.activeEntityMapping = null;
+                            });
+
+                        } else
+                        if (state.activeEntityMapping) {
+                            state.activeEntityMapping.emit("value", value);
+                        } else
+                        if (state.activeEntityInstance) {
+                            state.activeEntityInstance.emit("value", value);
+                        } else {
+
+console.error(path, "NOT HANDLED onvalue", value, state.objectPath);
+                        }
+                    });
+
+
+
+                    stream.on("closeobject", function () {
+
+//console.log("ON closeobject", state.objectPath);
+
+                        state.objectPath.pop();
+
+                        if (state.activeEntityImplementation) {
+                            state.activeEntityImplementation.emit("closeobject");
+                        } else
+                        if (state.activeEntityMapping) {
+                            state.activeEntityMapping.emit("closeobject");
+                        } else
+                        if (state.activeEntityInstance) {
+                            state.activeEntityInstance.emit("closeobject");
+                        } else {
+
+//console.log("ON closeobject NOT HANDLED", state.objectPath);
+
+                        }
+                    });
+
+
                     stream.on("openarray", function () {
                         if (state.activeEntityImplementation) {
                             state.activeEntityImplementation.emit("openarray");
@@ -213,7 +214,7 @@ console.error(path, "NOT HANDLED onvalue", value, state.objectPath);
 
                     stream.on("end", function () {
 
-console.log(path, "state", JSON.stringify(state, null, 4));
+//console.log(path, "state", JSON.stringify(state, null, 4));
 
                         return resolve(config);
                     });
@@ -245,9 +246,6 @@ console.log(path, "state", JSON.stringify(state, null, 4));
             });
             
             self.on("value", function (value) {
-
-console.log("SET VALUE", value, "currentKey", currentKey, "currentPointer", currentPointer);
-
                 if (currentKey) {
                     currentPointer[currentKey] = value;
                 } else
@@ -277,6 +275,10 @@ console.log("SET VALUE", value, "currentKey", currentKey, "currentPointer", curr
                 }
             });
             self.on("closeobject", function () {
+                if (pointerHistory.length === 0) {
+                    self.emit("end");
+                    return;
+                }
                 currentPointer = pointerHistory.pop();
             });
             
@@ -286,6 +288,10 @@ console.log("SET VALUE", value, "currentKey", currentKey, "currentPointer", curr
                 currentKey = null;
             });
             self.on("closearray", function () {
+                if (pointerHistory.length === 0) {
+                    self.emit("end");
+                    return;
+                }
                 currentPointer = pointerHistory.pop();
             });
             
@@ -336,15 +342,6 @@ console.log("SET VALUE", value, "currentKey", currentKey, "currentPointer", curr
                 return entity.instances[instanceAlias].assembler;
             }
 
-/*
-            self.registerEntityImplementation = function (alias, path) {
-                implementations.entities[alias] = new LIB.Promise(function (resolve, reject) {
-                    // We load code right away but don't instanciate until later
-                    return require.async(path, resolve, reject);
-                });
-            }
-*/           
-            
             self.assemble = function (overrides) {
                 var config = {};
 
@@ -353,7 +350,9 @@ console.log("ASSEMBLE ("+ path +") entity", entity);
 
                 function instanciateEntityImplementation () {
                     if (!entity.implementation) {
-                        return LIB.Promise.resolve({});
+                        var Entity = function (instanceConfig) {
+                        }
+                        return LIB.Promise.resolve(Entity);
                     }
                     return entity.implementation.assembler.assemble().then(function (config) {
 
@@ -386,16 +385,18 @@ console.log("ASSEMBLE ("+ path +") entity", entity);
                 
                 function instanciateEntityInstances (mappings) {
                     var instances = {};
+
+//console.log("instanciateEntityInstances mappings", mappings);
+//console.log("instanciateEntityInstances entity", entity);
+
                     return LIB.Promise.all(Object.keys(entity.instances).map(function (alias) {
+
                         return entity.instances[alias].assembler.assemble().then(function (configOverrides) {
-                            
+
                             var entityClass = mappings[entity.instances[alias].entityAlias];
                             if (!entityClass) {
                                 throw new Error("Entity '" + entity.instances[alias].entityAlias + "' used for instance '" + alias + "' not mapped!");
                             }
-
-console.log("MAPPINGS", mappings);
-console.log("configOverrides", configOverrides);
 /*
                                         var instance = Object.create({
                                             "$impl": impl
@@ -403,7 +404,11 @@ console.log("configOverrides", configOverrides);
                                         LIB._.assign(instance, entityConfig)
                                         instances[instanceAlias] = instance;
 */                                        
+
                             instances[alias] = new entityClass(configOverrides);
+
+//console.log("instances[alias]", instances[alias].__proto__);
+
                         });
                     })).then(function () {
                         return instances;
@@ -413,17 +418,17 @@ console.log("configOverrides", configOverrides);
                 return instanciateEntityImplementation().then(function (impl) {
                     return instanciateEntityMappings().then(function (mappings) {
 
-console.log("GOT MAPPINGS", mappings);
+//console.log("GOT MAPPINGS", mappings);
 
                         if (Object.keys(mappings).length) {
-                            impl["@entities"] = mappings;
+                            impl.prototype["@entities"] = mappings;
                         }
-                        return instanciateEntityInstances(impl["@entities"] || {}).then(function (instances) {
-                            if (Object.keys(mappings).length) {
-                                impl["@instances"] = instances;
+                        return instanciateEntityInstances(impl.prototype["@entities"] || {}).then(function (instances) {
+                            if (Object.keys(instances).length > 0) {
+                                impl.prototype["@instances"] = instances;
                             }
 
-console.log("FINAL IMPL", impl);
+//console.log("FINAL IMPL", impl.prototype);
 
                             return impl;
                         });

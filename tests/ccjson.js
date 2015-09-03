@@ -1,4 +1,8 @@
 
+
+//process.env.CDEBUG = "info";
+
+
 const PATH = require("path");
 const FS = require("fs");
 const _ = require("lodash");
@@ -36,8 +40,9 @@ describe('ccjson', function() {
         }
     };
 
+
     it('01-EntityImplementation', function (done) {
-return done();
+//return done();
         return CCJSON.then(function (CCJSON) {
             return CCJSON.parseFile(
                 PATH.join(__dirname, "assets/01-EntityImplementation/entity.ccjson")
@@ -54,11 +59,8 @@ return done();
             return CCJSON.parseFile(
                 PATH.join(__dirname, "assets/02-EntityMapping/config.ccjson")
             ).then(function (config) {
-
-console.log("config", JSON.stringify(config, null, 4));
-
-                config["@entities"]["entity"] = config["@entities"]["entity"].prototype;
-                ASSERT.deepEqual(config, {
+                config.prototype["@entities"]["entity"] = config.prototype["@entities"]["entity"].prototype;
+                ASSERT.deepEqual(config.prototype, {
                     "@entities": {
                         "entity": _.merge(EXPECTATIONS["01-EntityImplementation"], {
                             "config": {
@@ -67,31 +69,44 @@ console.log("config", JSON.stringify(config, null, 4));
                         })
                     }
                 });
-
                 return done();
             });
         }).catch(done);
     });
 
     it('03-EntityInstance', function (done) {
-return done();        
+//return done();        
         return CCJSON.then(function (CCJSON) {
             return CCJSON.parseFile(
                 PATH.join(__dirname, "assets/03-EntityInstance/config.ccjson")
             ).then(function (config) {
-                
-console.log("config", JSON.stringify(config, null, 4));
-/*
-                ASSERT.deepEqual(config, {
+                config.prototype["@entities"]["entity"] = config.prototype["@entities"]["entity"].prototype;
+                config.prototype["@instances"]["inst1"] = config.prototype["@instances"]["inst1"].toString();
+                config.prototype["@instances"]["inst2"] = config.prototype["@instances"]["inst2"].toString();
+//console.log("config", JSON.stringify(config.prototype, null, 4));
+                ASSERT.deepEqual(config.prototype, {
                     "@entities": {
                         "entity": _.merge(EXPECTATIONS["01-EntityImplementation"], {
                             "config": {
                                 "newOverride": "New Override"
                             }
                         })
+                    },
+                    "@instances": {
+                        "inst1": _.merge(EXPECTATIONS["01-EntityImplementation"], {
+                            "config": {
+                                "override": "New Value 1",
+                                "newOverride": "New Override"
+                            }
+                        }),
+                        "inst2": _.merge(EXPECTATIONS["01-EntityImplementation"], {
+                            "config": {
+                                "override": "New Value 2",
+                                "newOverride": "New Override"
+                            }
+                        })
                     }
                 });
-*/
                 return done();
             });
         }).catch(done);
