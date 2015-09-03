@@ -1,0 +1,17 @@
+{
+    "@": {
+        "entity": {
+            "$": "../01-EntityImplementation/entity.ccjson",
+            "override": "should be overwritten below",
+            "newOverride": "New Override"
+        }
+    },
+    "@entity": {
+        "$inst1": {
+            "override": "New Value 1"
+        },
+        "$inst2": {
+            "override": "New Value 2"
+        }
+    }
+}

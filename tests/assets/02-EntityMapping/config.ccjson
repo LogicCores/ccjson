@@ -1,0 +1,8 @@
+{
+    "@": {
+        "entity": {
+            "$": "../01-EntityImplementation/entity.ccjson",
+            "newOverride": "New Override"
+        }
+    }
+}

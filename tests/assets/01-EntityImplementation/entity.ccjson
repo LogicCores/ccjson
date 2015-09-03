@@ -1,0 +1,22 @@
+{
+    "$": "./entity.js",
+    "default": "value",
+    "int": 1,
+    "bool": true,
+    "obj": {
+        "key": "val",
+        "array": [
+            "string",
+            true,
+            {
+                "nested": {
+                    "deep": true,
+                    "obj": {}
+                }
+            },
+            10
+        ],
+        "another": "value"
+    },
+    "me": "too"
+}

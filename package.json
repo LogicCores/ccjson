@@ -1,4 +1,17 @@
 {
-    "name": "ccjson",
-    "version": "0.0.0"
+  "name": "ccjson",
+  "version": "0.0.0",
+  "main": "ccjson.js",
+  "dependencies": {
+    "clarinet": "^0.11.0",
+    "lodash": "^3.10.1",
+    "require.async": "^0.1.1"
+  },
+  "devDependencies": {
+    "bluebird": "^2.9.34",
+    "mocha": "^2.3.0"
+  },
+  "scripts": {
+    "test": "mocha tests/*.js"
+  }
 }
