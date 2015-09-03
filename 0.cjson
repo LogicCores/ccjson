@@ -1,9 +1,0 @@
-{
-    "@impl": "{{__BOOT_BASE__/0/impl.js}}",
-    "@var": {
-        "@impl": "./0/var.js"
-    },
-    "{{__DIRNAME__}}": {
-        "@impl": "./0/var.dirname.js"
-    }
-}
