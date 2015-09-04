@@ -33,33 +33,16 @@ exports.forLib = function (LIB) {
 
                     var stream = CLARINET.createStream({});
     
-                    stream.on("error", function (e) {
+                    stream.on("error", function (err) {
                         // unhandled errors will throw, since this is a proper node
                         // event emitter.
-                        console.error("error!", e)
+                        console.error("error!", err);
                         // clear the error
-                        this._parser.error = null
+//                        this._parser.error = null
 //                        this._parser.resume()
+                        return reject(err);
                     });
-                    
-                    
-                    var state = {
-                        objectPath: [],
-                        onObjectClose: {},
 
-                        activeEntityImplementation: false,
-
-                        activeInheritedImplementations: false,
-
-                        activeEntityMapping: false,
-                        activeEntityMappingHasImplementation: false,
-
-                        activeEntityAlias: null,
-                        activeInstanceAlias: null,
-                        activeEntityInstance: false
-                    };
-                    
-                    
                     var current = {
                         section: null,
                         drain: null,
@@ -108,6 +91,7 @@ exports.forLib = function (LIB) {
                         if (current.drained) {
                             current.drained = false;
 
+//console.log(" .. DRAINED", current.section);
                             // 02-EntityMapping
                             if (
                                 current.section === "mapping" &&
@@ -115,6 +99,13 @@ exports.forLib = function (LIB) {
                             ) {
                                 current.section = null;
                                 return;
+                            } else
+                            // 05-MultipleEntityMappingsAndInstances
+                            if (
+                                current.section === "mapping" &&
+                                type === "key"
+                            ) {
+                                current.section = "mapping";
                             } else
                             // 03-EntityInstance
                             if (
@@ -170,7 +161,10 @@ exports.forLib = function (LIB) {
 
                         // 03-EntityInstance
                         if (
-                            current.section === null &&
+                            (
+                                current.section === null ||
+                                current.section === "entity"
+                            ) &&
                             type === "key" &&
                             /^@/.test(value)
                         ) {
@@ -220,7 +214,10 @@ exports.forLib = function (LIB) {
                             current.section = "config";
                         } else
                         if (
-                            current.section === "config" &&
+                            (
+                                current.section === "config" ||
+                                current.section === "mapping"
+                            ) &&
                             type === "key"
                         ) {
                             current.drain = config.registerEntityMappingDeclaration(value);
@@ -358,13 +355,19 @@ exports.forLib = function (LIB) {
             self.assemble = function (overrides) {
                 overrides = overrides || [];
                 var mergedConfig = {};
-                mergedConfig = LIB._.merge(mergedConfig, config);
                 return LIB.Promise.all(overrides.map(function (override) {
                     return override.assemble().then(function (config) {
                         // TODO: Implement merging that respects promises.
-                        mergedConfig = LIB._.merge(config, mergedConfig);
+                        LIB._.merge(
+                            mergedConfig,
+                            LIB._.cloneDeep(config)
+                        );
                     });
                 })).then(function () {
+                    LIB._.merge(
+                        mergedConfig,
+                        LIB._.cloneDeep(config)
+                    );
                     return mergedConfig;
                 });
             };
@@ -497,9 +500,14 @@ exports.forLib = function (LIB) {
                             
                             return factory.forLib(LIB).then(function (exports) {
 
-                                LIB._.assign(config, overrides || {});
+//console.log("ONE CONFIG", config);
+                                var defaultConfig = LIB._.cloneDeep(config);
+                                LIB._.assign(defaultConfig, overrides || {});
 
-                                return exports.forConfig(config);
+//console.log("FOR COINFIUG", defaultConfig);
+//throw new Error("FALSE");
+
+                                return exports.forConfig(defaultConfig);
                             });
                         });
                     });

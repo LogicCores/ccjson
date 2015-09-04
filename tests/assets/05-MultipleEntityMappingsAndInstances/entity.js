@@ -7,15 +7,15 @@ exports.forLib = function (LIB) {
             var Entity = function (instanceConfig) {
                 var self = this;
                 self.toString = function () {
-                    var obj = {};
-                    LIB._.merge(obj, LIB._.cloneDeep(self.__proto__));
-                    LIB._.merge(obj, LIB._.cloneDeep({
-                        config: instanceConfig
-                    }));
-                    return obj;
+                    return LIB._.merge(
+                        self.__proto__,
+                        {
+                            config: instanceConfig
+                        }
+                    );
                 }
             }
-            Entity.prototype._entity = "01-EntityImplementation/entity";
+            Entity.prototype._entity = "05-MultipleEntityMappingsAndInstances/entity";
             Entity.prototype.config = defaultConfig;
 
             return Entity;

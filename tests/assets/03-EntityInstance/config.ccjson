@@ -3,7 +3,7 @@
         "entity": {
             "$": "../01-EntityImplementation/entity.ccjson",
             "override": "should be overwritten below",
-            "newOverride": "New Override"
+            "newOverride": "Our Override"
         }
     },
     "@entity": {
