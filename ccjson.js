@@ -45,12 +45,25 @@ console.log("---------------------------------------------------");
                     var state = {
                         objectPath: [],
                         onObjectClose: {},
+
                         activeEntityImplementation: false,
+
+                        activeInheritedImplementations: false,
+
                         activeEntityMapping: false,
+                        activeEntityMappingHasImplementation: false,
+
                         activeEntityAlias: null,
                         activeInstanceAlias: null,
                         activeEntityInstance: false
                     };
+                    
+                    
+                    function nextToken (type, value) {
+                        
+                        
+                        
+                    }
 
 
                     stream.on("openobject", function (key) {
@@ -76,18 +89,58 @@ console.error(path, "onopenobject", key, state);
                         if (state.activeEntityInstance) {
                             state.activeEntityInstance.emit("openobject", key);
                         } else {
-                            if (key === "@") {
+                            
+console.log("NEW DEF key", key);
+console.log("NEW DEF state.objectPath", state.objectPath);
+
+                            if (
+                                state.objectPath.length === 0 &&
+                                key === "@"
+                            ) {
                                 // Nothing to do here.
                             } else
-                            if (key === "$") {
+                            if (
+                                state.objectPath.length === 2 &&
+                                state.objectPath[0] === "@"
+//                                state.objectPath[1] !== "$"
+                            ) {
                                 
+
+console.log("IN ENTITY CONFIG", state, key, path);
+
+                                if (key === "$") {
+
+console.log("IN ENTITY CONFIG - HAS IMPL", path);
+                                    state.activeEntityMappingHasImplementation = true;
+
+                                }
+
+
+console.log("START ENTITY MAPPING", path);
+                                    // We are declaring a mapping
+                                    state.activeEntityMapping = true;
+                            } else
+                            if (key === "$") {
+/*                                
                                 if (
                                     state.objectPath.length === 2 &&
                                     state.objectPath[0] === "@"
                                 ) {
                                     // We are declaring a mapping
                                     state.activeEntityMapping = true;
-                                } else {
+                                } else
+*/                                
+                                if (
+                                    state.objectPath.length === 1 &&
+                                    state.objectPath[0] === "@"
+                                ) {
+                                    // We are inhereting from other implementations
+                                    state.activeInheritedImplementations = true;
+                                } else
+                                if (state.objectPath.length === 0) {
+                                    
+//console.log(" state.objectPath !!!!!!", state.objectPath);
+//throw "STOP";
                                     // We are declaring an implementation
                                     state.activeEntityImplementation = true;
                                 }
@@ -131,7 +184,7 @@ console.error(path, "onopenobject", key, state);
 
                     stream.on("value", function (value) {
 
-//console.error(path, "onvalue", value, state.objectPath);
+console.error(path, "onvalue", value, state.objectPath);
 
                         if (state.activeEntityImplementation === true) {
                             state.activeEntityImplementation = config.registerEntityImplementation(
@@ -145,9 +198,17 @@ console.error(path, "onopenobject", key, state);
                             state.activeEntityImplementation.emit("value", value);
                         } else
                         if (state.activeEntityMapping === true) {
+                            
+console.log(path, "registerEntityMappingDeclaration", state.objectPath[1]);
+console.log("registerEntityMappingDeclaration state", state);
+
                             state.activeEntityMapping = config.registerEntityMappingDeclaration(
                                 state.objectPath[1],
-                                LIB.path.join(path, "..", value)
+                                (
+                                    state.activeEntityMappingHasImplementation ?
+                                        LIB.path.join(path, "..", value) :
+                                        ""
+                                )
                             );
                             state.activeEntityMapping.once("end", function () {
                                 state.activeEntityMapping = null;
@@ -159,6 +220,14 @@ console.error(path, "onopenobject", key, state);
                         } else
                         if (state.activeEntityInstance) {
                             state.activeEntityInstance.emit("value", value);
+                        } else
+                        if (state.activeInheritedImplementations) {
+                            
+console.log("INIT INHERITANCE VALUE", value);
+
+                            config.registerInheritedEntityImplementation(
+                                LIB.path.join(path, "..", value)
+                            );
                         } else {
 
 console.error(path, "NOT HANDLED onvalue", value, state.objectPath);
@@ -209,6 +278,10 @@ console.error(path, "NOT HANDLED onvalue", value, state.objectPath);
                         } else
                         if (state.activeEntityInstance) {
                             state.activeEntityInstance.emit("closearray");
+                        } else
+                        if (state.activeInheritedImplementations === true) {
+                            
+                            state.activeInheritedImplementations = false;
                         }
                     });
 
@@ -311,10 +384,11 @@ console.error(path, "NOT HANDLED onvalue", value, state.objectPath);
 
             var entity = {
                 implementation: null,
+                inheritedImplementations: [],
                 mappings: {},
                 instances: {}
             }
- 
+
             self.registerEntityImplementation = function (path) {
                 entity.implementation = {
                     assembler: new ConfigObjectAssembler(),
@@ -326,10 +400,16 @@ console.error(path, "NOT HANDLED onvalue", value, state.objectPath);
                 return entity.implementation.assembler;
             }
 
+            self.registerInheritedEntityImplementation = function (path) {
+                entity.inheritedImplementations.push({
+                    impl: parseFile(path)
+                });
+            }
+
             self.registerEntityMappingDeclaration = function (alias, path) {
                 entity.mappings[alias] = {
                     assembler: new ConfigObjectAssembler(),
-                    impl: parseFile(path)
+                    impl: path ? parseFile(path) : null
                 };
                 return entity.mappings[alias].assembler;
             }
@@ -358,6 +438,8 @@ console.log("ASSEMBLE ("+ path +") entity", entity);
 
                         return entity.implementation.impl.then(function (factory) {
                             
+console.log("FACTORY", factory);
+
                             return factory.forLib(LIB).then(function (exports) {
 
                                 LIB._.assign(config, overrides || {});
@@ -367,18 +449,57 @@ console.log("ASSEMBLE ("+ path +") entity", entity);
                         });
                     });
                 }
-                
-                function instanciateEntityMappings () {
-                    var mappings = {};
-                    return LIB.Promise.all(Object.keys(entity.mappings).map(function (alias) {
-                        return entity.mappings[alias].assembler.assemble().then(function (configOverrides) {
-                            return entity.mappings[alias].impl.then(function (config) {
-                                return config.assemble(configOverrides).then(function (config) {
-                                    mappings[alias] = config;
-                                });
+
+                function gatherInheritedImplementations () {
+                    var implementations = [];
+                    return LIB.Promise.all(entity.inheritedImplementations.map(function (config) {
+                        return config.impl.then(function (config) {
+                            return config.assemble().then(function (config) {
+                                implementations.push(config.prototype);
                             });
                         });
                     })).then(function () {
+                        return implementations;
+                    });
+                }
+
+                function instanciateEntityMappings (inheritedImplementations) {
+                    var mappings = {};
+
+console.log(path, "instanciateEntityMappings -1- entity.mappings", entity.mappings);
+console.log("instanciateEntityMappings -1- inheritedImplementations", inheritedImplementations);
+                    inheritedImplementations.forEach(function (inheritedImplementation) {
+                        if (inheritedImplementation["@entities"]) {
+                            LIB._.assign(mappings, inheritedImplementation["@entities"]);
+                        }
+                    });
+
+console.log("instanciateEntityMappings -2- mappings", mappings);
+
+                    return LIB.Promise.all(Object.keys(entity.mappings).map(function (alias) {
+
+console.log("TRIGGER ASSEMBLE ENTITY::alias", alias);
+
+                        return entity.mappings[alias].assembler.assemble().then(function (configOverrides) {
+
+console.log("TRIGGER ASSEMBLE ENTITY::configOverrides", configOverrides);
+console.log("TRIGGER ASSEMBLE ENTITY::entity.mappings[alias]", entity.mappings[alias]);
+
+                            if (entity.mappings[alias].impl) {
+                                return entity.mappings[alias].impl.then(function (config) {
+
+                                    return config.assemble(configOverrides).then(function (config) {
+                                        mappings[alias] = config;
+                                    });
+                                });
+                            } else {
+                                mappings[alias] = config;
+                            }
+                        });
+                    })).then(function () {
+
+console.log("instanciateEntityMappings -3- mappings", mappings);
+
                         return mappings;
                     });
                 }
@@ -416,21 +537,27 @@ console.log("ASSEMBLE ("+ path +") entity", entity);
                 }
 
                 return instanciateEntityImplementation().then(function (impl) {
-                    return instanciateEntityMappings().then(function (mappings) {
 
-//console.log("GOT MAPPINGS", mappings);
+                    return gatherInheritedImplementations().then(function (inheritedImplementations) {
 
-                        if (Object.keys(mappings).length) {
-                            impl.prototype["@entities"] = mappings;
-                        }
-                        return instanciateEntityInstances(impl.prototype["@entities"] || {}).then(function (instances) {
-                            if (Object.keys(instances).length > 0) {
-                                impl.prototype["@instances"] = instances;
+console.log("inheritedImplementations", inheritedImplementations);
+    
+                        return instanciateEntityMappings(inheritedImplementations).then(function (mappings) {
+
+    //console.log("GOT MAPPINGS", mappings);
+    
+                            if (Object.keys(mappings).length) {
+                                impl.prototype["@entities"] = mappings;
                             }
-
-//console.log("FINAL IMPL", impl.prototype);
-
-                            return impl;
+                            return instanciateEntityInstances(impl.prototype["@entities"] || {}).then(function (instances) {
+                                if (Object.keys(instances).length > 0) {
+                                    impl.prototype["@instances"] = instances;
+                                }
+    
+    //console.log("FINAL IMPL", impl.prototype);
+    
+                                return impl;
+                            });
                         });
                     });
                 });

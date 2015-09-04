@@ -1,5 +1,15 @@
 {
     "@": {
-        "$": "./config.proto.ccjson"
+        "$": [
+            "../03-EntityInstance/config.ccjson"
+        ],
+        "entity": {
+            "newOverride": "New Override from our config"
+        }
+    },
+    "@entity": {
+        "$inst3": {
+            "override": "New Value 3"
+        }
     }
 }
