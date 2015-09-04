@@ -20,9 +20,10 @@ exports.forLib = function (LIB) {
 
 
         function parseFile (path) {
-console.log("\n\n---------------------------------------------------");
-console.log("PARSE CJSON FILE:", path);
-console.log("---------------------------------------------------");
+            
+//console.log("\n\n---------------------------------------------------");
+//console.log("PARSE CJSON FILE:", path);
+//console.log("---------------------------------------------------");
 
             return new LIB.Promise(function (resolve, reject) {
                 
@@ -59,239 +60,219 @@ console.log("---------------------------------------------------");
                     };
                     
                     
+                    var current = {
+                        section: null,
+                        drain: null,
+                        drainCount: 0,
+                        drained: false,
+                        entityAlias: null,
+                        captureImplementation: false
+                    };
+
                     function nextToken (type, value) {
-                        
-                        
-                        
-                    }
+
+                        if (current.drain) {
+//console.log("  ... draining token", type, value);
 
 
-                    stream.on("openobject", function (key) {
-
-console.error(path, "onopenobject", key, state);
-
-                        if (state.activeEntityImplementation) {
-                            state.activeEntityImplementation.emit("openobject", key);
-                        } else
-                        if (state.activeEntityMapping) {
-                            state.activeEntityMapping.emit("openobject", key);
-                        } else
-                        if (state.activeEntityInstance === true) {
-                                state.activeEntityInstance = config.registerEntityInstanceDeclaration(
-                                    state.activeEntityAlias,
-                                    state.activeInstanceAlias
+                            // 02-EntityMapping
+                            if (
+                                current.drainCount === 0 &&
+                                type === "openobject" &&
+                                typeof current.drain.onImplementation === "function" &&
+                                value === "$"
+                            ) {
+                                current.captureImplementation = true
+                            } else
+                            if (
+                                current.drainCount === 0 &&
+                                type === "value" &&
+                                typeof current.drain.onImplementation === "function" &&
+                                current.captureImplementation === true
+                            ) {
+                                current.drain.onImplementation(
+                                    LIB.path.join(path, "..", value)
                                 );
-                                state.activeEntityInstance.once("end", function () {
-                                    state.activeEntityInstance = null;
-                                });
-                                state.activeEntityInstance.emit("key", key);
-                        } else
-                        if (state.activeEntityInstance) {
-                            state.activeEntityInstance.emit("openobject", key);
-                        } else {
-                            
-console.log("NEW DEF key", key);
-console.log("NEW DEF state.objectPath", state.objectPath);
+                                current.captureImplementation = false;
+                            } else
 
+                            {
+                                current.drainCount += 1;
+                                current.drain.drain.emit(type, value);
+                            }
+                            return ;
+                        }
+
+//console.log("NEXT TOKEN", type, value);
+
+                        if (current.drained) {
+                            current.drained = false;
+
+                            // 02-EntityMapping
                             if (
-                                state.objectPath.length === 0 &&
-                                key === "@"
+                                current.section === "mapping" &&
+                                type === "closeobject"
                             ) {
-                                // Nothing to do here.
+                                current.section = null;
+                                return;
                             } else
+                            // 03-EntityInstance
                             if (
-                                state.objectPath.length === 2 &&
-                                state.objectPath[0] === "@"
-//                                state.objectPath[1] !== "$"
+                                current.section === "instance" &&
+                                type === "key"
                             ) {
-                                
-
-console.log("IN ENTITY CONFIG", state, key, path);
-
-                                if (key === "$") {
-
-console.log("IN ENTITY CONFIG - HAS IMPL", path);
-                                    state.activeEntityMappingHasImplementation = true;
-
-                                }
-
-
-console.log("START ENTITY MAPPING", path);
-                                    // We are declaring a mapping
-                                    state.activeEntityMapping = true;
+                                current.section = "entity";
                             } else
-                            if (key === "$") {
-/*                                
-                                if (
-                                    state.objectPath.length === 2 &&
-                                    state.objectPath[0] === "@"
-                                ) {
-                                    // We are declaring a mapping
-                                    state.activeEntityMapping = true;
-                                } else
-*/                                
-                                if (
-                                    state.objectPath.length === 1 &&
-                                    state.objectPath[0] === "@"
-                                ) {
-                                    // We are inhereting from other implementations
-                                    state.activeInheritedImplementations = true;
-                                } else
-                                if (state.objectPath.length === 0) {
-                                    
-//console.log(" state.objectPath !!!!!!", state.objectPath);
-//throw "STOP";
-                                    // We are declaring an implementation
-                                    state.activeEntityImplementation = true;
-                                }
-                            } else
-                            if (/^\$.+/.test(key)) {
-                                state.activeInstanceAlias = key.substring(1);
-                                state.activeEntityInstance = true;
-                            } else {
-
-    console.error(path, "NOT HANDLED onopenobject", key);
-                                
+                            // 04-ConfigInheritance
+                            if (
+                                current.section === "instance" &&
+                                type === "closeobject"
+                            ) {
+                                current.section = "entity";
+                                return;
                             }
                         }
-                        state.objectPath.push(key);
-                    });
 
-                    stream.on("key", function (key) {
 
-            console.error(path, "onkey", key);
-            
-                        if (state.activeEntityImplementation) {
-                            state.activeEntityImplementation.emit("key", key);
+                        // 01-EntityImplementation
+                        if (
+                            current.section === null &&
+                            type === "openobject" &&
+                            value === "$"
+                        ) {
+                            current.section = "impl"
                         } else
-                        if (state.activeEntityMapping) {
-                            state.activeEntityMapping.emit("key", key);
-                        } else
-                        if (state.activeEntityInstance) {
-                            state.activeEntityInstance.emit("key", key);
-                        } else
-                        if (/^@.+/.test(key)) {
-                            state.activeEntityAlias = key.substring(1);
-                        } else
-                        if (/^\$.+/.test(key)) {
-                            state.activeInstanceAlias = key.substring(1);
-                            state.activeEntityInstance = true;
-                        } else {
-            console.error(path, "NOT HANDLED onkey", key, state.objectPath);
-
-                        }
-                    });
-
-                    stream.on("value", function (value) {
-
-console.error(path, "onvalue", value, state.objectPath);
-
-                        if (state.activeEntityImplementation === true) {
-                            state.activeEntityImplementation = config.registerEntityImplementation(
+                        if (
+                            current.section === "impl" &&
+                            type === "value"
+                        ) {
+                            current.drain = config.registerEntityImplementation(
                                 LIB.path.join(path, "..", value)
                             );
-                            state.activeEntityImplementation.once("end", function () {
-                                state.activeEntityImplementation = null;
-                            });
                         } else
-                        if (state.activeEntityImplementation) {
-                            state.activeEntityImplementation.emit("value", value);
+                        
+                        // 02-EntityMapping
+                        if (
+                            current.section === null &&
+                            type === "openobject" &&
+                            value === "@"
+                        ) {
+                            current.section = "config"
                         } else
-                        if (state.activeEntityMapping === true) {
-                            
-console.log(path, "registerEntityMappingDeclaration", state.objectPath[1]);
-console.log("registerEntityMappingDeclaration state", state);
+                        if (
+                            current.section === "config" &&
+                            type === "openobject" &&
+                            value !== "$"
+                        ) {
+                            current.drain = config.registerEntityMappingDeclaration(value);
+                            current.section = "mapping";
+                        } else
 
-                            state.activeEntityMapping = config.registerEntityMappingDeclaration(
-                                state.objectPath[1],
-                                (
-                                    state.activeEntityMappingHasImplementation ?
-                                        LIB.path.join(path, "..", value) :
-                                        ""
-                                )
+                        // 03-EntityInstance
+                        if (
+                            current.section === null &&
+                            type === "key" &&
+                            /^@/.test(value)
+                        ) {
+                            current.section = "entity";
+                            current.entityAlias = value.substring(1);
+                        } else
+                        if (
+                            current.section === "entity" &&
+                            current.entityAlias !== null &&
+                            (type === "openobject" || type === "key") &&
+                            /^\$/.test(value)
+                        ) {
+                            current.section = "instance";
+                            current.drain = config.registerEntityInstanceDeclaration(
+                                current.entityAlias,
+                                value.substring(1)
                             );
-                            state.activeEntityMapping.once("end", function () {
-                                state.activeEntityMapping = null;
-                            });
-
+//                            current.drain.drain.activeEntityInstance.emit("key", key);
                         } else
-                        if (state.activeEntityMapping) {
-                            state.activeEntityMapping.emit("value", value);
+                        
+                        // 04-ConfigInheritance
+                        if (
+                            current.section === "config" &&
+                            type === "openobject" &&
+                            value === "$"
+                        ) {
+                            current.section = "inherit";
                         } else
-                        if (state.activeEntityInstance) {
-                            state.activeEntityInstance.emit("value", value);
+                        if (
+                            current.section === "inherit" &&
+                            type === "openarray"
+                        ) {
+                            // Ignore
                         } else
-                        if (state.activeInheritedImplementations) {
-                            
-console.log("INIT INHERITANCE VALUE", value);
-
+                        if (
+                            current.section === "inherit" &&
+                            type === "value"
+                        ) {
                             config.registerInheritedEntityImplementation(
                                 LIB.path.join(path, "..", value)
                             );
-                        } else {
+                        } else
+                        if (
+                            current.section === "inherit" &&
+                            type === "closearray"
+                        ) {
+                            current.section = "config";
+                        } else
+                        if (
+                            current.section === "config" &&
+                            type === "key"
+                        ) {
+                            current.drain = config.registerEntityMappingDeclaration(value);
+                            current.section = "mapping";
+                        } else
+                        if (
+                            current.section === "entity" &&
+                            type === "closeobject"
+                        ) {
+                            current.section = "config";
+                        } else
+                        
+                        
+                        {
 
-console.error(path, "NOT HANDLED onvalue", value, state.objectPath);
+//console.log("  **** UNHANDLED TOKEN", type, value, current.section);
                         }
+
+                        // A new drain was registered so we ensure it unhooks itself when done.
+                        // TODO: We should terminate drain instead of letting it do it itself?
+                        if (current.drain) {
+                            current.drain.drain.once("end", function () {
+                                // Is set for the next token only so we can cleanup
+                                current.drained = true;
+                                current.drain = null;
+                                current.drainCount = 0;
+                            });
+                        }
+                    }
+
+                    stream.on("openobject", function (key) {
+                        nextToken("openobject", key);
                     });
-
-
-
+                    stream.on("key", function (key) {
+                        nextToken("key", key);
+                    });
+                    stream.on("value", function (value) {
+                        nextToken("value", value);
+                    });
                     stream.on("closeobject", function () {
-
-//console.log("ON closeobject", state.objectPath);
-
-                        state.objectPath.pop();
-
-                        if (state.activeEntityImplementation) {
-                            state.activeEntityImplementation.emit("closeobject");
-                        } else
-                        if (state.activeEntityMapping) {
-                            state.activeEntityMapping.emit("closeobject");
-                        } else
-                        if (state.activeEntityInstance) {
-                            state.activeEntityInstance.emit("closeobject");
-                        } else {
-
-//console.log("ON closeobject NOT HANDLED", state.objectPath);
-
-                        }
+                        nextToken("closeobject");
                     });
-
-
                     stream.on("openarray", function () {
-                        if (state.activeEntityImplementation) {
-                            state.activeEntityImplementation.emit("openarray");
-                        } else
-                        if (state.activeEntityMapping) {
-                            state.activeEntityMapping.emit("openarray");
-                        } else
-                        if (state.activeEntityInstance) {
-                            state.activeEntityInstance.emit("openarray");
-                        }
+                        nextToken("openarray");
                     });
                     stream.on("closearray", function () {
-                        if (state.activeEntityImplementation) {
-                            state.activeEntityImplementation.emit("closearray");
-                        } else
-                        if (state.activeEntityMapping) {
-                            state.activeEntityMapping.emit("closearray");
-                        } else
-                        if (state.activeEntityInstance) {
-                            state.activeEntityInstance.emit("closearray");
-                        } else
-                        if (state.activeInheritedImplementations === true) {
-                            
-                            state.activeInheritedImplementations = false;
-                        }
+                        nextToken("closearray");
                     });
-
                     stream.on("end", function () {
-
-//console.log(path, "state", JSON.stringify(state, null, 4));
-
                         return resolve(config);
                     });
-    
+
                     // pipe is supported, and it's readable/writable
                     // same chunks coming in also go out.
                     LIB.fs.createReadStream(path).pipe(stream);
@@ -330,18 +311,22 @@ console.error(path, "NOT HANDLED onvalue", value, state.objectPath);
             });
 
             self.on("openobject", function (key) {
-                pointerHistory.push(currentPointer);
                 if (currentKey) {
+                pointerHistory.push(currentPointer);
                     currentPointer = currentPointer[currentKey] = {};
                     currentKey = key;
                 } else
                 if (Array.isArray(currentPointer)) {
+                pointerHistory.push(currentPointer);
                     var newPointer = {};
                     currentPointer.push(newPointer);
                     currentPointer = newPointer;
                     currentKey = key;
                 } else {
-                    currentPointer = currentPointer[key] = {};
+                    currentKey = key;
+//                    currentPointer = currentPointer[key] = {};
+
+
 //                    console.error("currentKey", currentKey);
 //                    console.error("currentPointer", currentPointer);
 //                    throw new Error("Don't know how to attach object '" + key + "'");
@@ -370,9 +355,17 @@ console.error(path, "NOT HANDLED onvalue", value, state.objectPath);
             
 
 
-            self.assemble = function () {
-                return LIB.Promise.try(function () {
-                    return config;
+            self.assemble = function (overrides) {
+                overrides = overrides || [];
+                var mergedConfig = {};
+                mergedConfig = LIB._.merge(mergedConfig, config);
+                return LIB.Promise.all(overrides.map(function (override) {
+                    return override.assemble().then(function (config) {
+                        // TODO: Implement merging that respects promises.
+                        mergedConfig = LIB._.merge(config, mergedConfig);
+                    });
+                })).then(function () {
+                    return mergedConfig;
                 });
             };
         }
@@ -391,13 +384,16 @@ console.error(path, "NOT HANDLED onvalue", value, state.objectPath);
 
             self.registerEntityImplementation = function (path) {
                 entity.implementation = {
+                    _type: "entity-implementation",
                     assembler: new ConfigObjectAssembler(),
                     impl: new LIB.Promise(function (resolve, reject) {
                         // We load code right away but don't instanciate until later
                         return require.async(path, resolve, reject);
                     })
                 };
-                return entity.implementation.assembler;
+                return {
+                    drain: entity.implementation.assembler
+                };
             }
 
             self.registerInheritedEntityImplementation = function (path) {
@@ -408,25 +404,86 @@ console.error(path, "NOT HANDLED onvalue", value, state.objectPath);
 
             self.registerEntityMappingDeclaration = function (alias, path) {
                 entity.mappings[alias] = {
+                    _type: "entity-mapping",
                     assembler: new ConfigObjectAssembler(),
-                    impl: path ? parseFile(path) : null
+                    impl: null,
+                    overrides: []
                 };
-                return entity.mappings[alias].assembler;
+                return {
+                    onImplementation: function (path) {
+                        entity.mappings[alias].impl = parseFile(path);
+                    },
+                    drain: entity.mappings[alias].assembler
+                };
             }
-            
+
             self.registerEntityInstanceDeclaration = function (entityAlias, instanceAlias) {
                 entity.instances[instanceAlias] = {
+                    _type: "entity-instance",
                     assembler: new ConfigObjectAssembler(),
-                    entityAlias: entityAlias
+                    entityAlias: entityAlias,
+                    overrides: []
                 };
-                return entity.instances[instanceAlias].assembler;
+                return {
+                    drain: entity.instances[instanceAlias].assembler
+                };
             }
 
-            self.assemble = function (overrides) {
+            self.flattenExtends = function (layers) {
+                var firstNode = !layers;
+                if (firstNode) {
+                    layers = [];
+                }
+                return LIB.Promise.all(entity.inheritedImplementations.map(function (config) {
+                    return config.impl.then(function (config) {
+                        return config.flattenExtends(layers);
+                    });
+                })).then(function () {
+                    if (!firstNode) {
+                        layers.push(entity);
+                        return;
+                    }
+
+                    return LIB.Promise.all(layers.map(function (layer) {
+                        
+                        function mergeMappings () {
+                            return LIB.Promise.all(Object.keys(layer.mappings).map(function (mappingAlias) {
+                                if (!entity.mappings[mappingAlias]) {
+                                    entity.mappings[mappingAlias] = layer.mappings[mappingAlias];
+                                    return;
+                                }
+                                entity.mappings[mappingAlias].overrides.push(
+                                    layer.mappings[mappingAlias]
+                                );
+                            }));
+                        }
+                        
+                        function mergeInstances () {
+                            return LIB.Promise.all(Object.keys(layer.instances).map(function (instanceAlias) {
+                                if (!entity.instances[instanceAlias]) {
+                                    entity.instances[instanceAlias] = layer.instances[instanceAlias];
+                                    return;
+                                }
+                                entity.instances[instanceAlias].overrides.push(
+                                    layer.instances[instanceAlias]
+                                );
+                            }));
+                        }
+                        
+                        return mergeMappings().then(function () {
+                            return mergeInstances();
+                        });
+                    })).then(function  () {
+                        return entity;
+                    });
+                });
+            }
+
+            self.assemble = function (requestingEntity, overrides) {
                 var config = {};
 
-console.log("ASSEMBLE ("+ path +") overrides", overrides);
-console.log("ASSEMBLE ("+ path +") entity", entity);
+//console.log("ASSEMBLE ("+ path +") overrides", overrides);
+//console.log("ASSEMBLE ("+ path +") entity", entity);
 
                 function instanciateEntityImplementation () {
                     if (!entity.implementation) {
@@ -438,8 +495,6 @@ console.log("ASSEMBLE ("+ path +") entity", entity);
 
                         return entity.implementation.impl.then(function (factory) {
                             
-console.log("FACTORY", factory);
-
                             return factory.forLib(LIB).then(function (exports) {
 
                                 LIB._.assign(config, overrides || {});
@@ -450,55 +505,46 @@ console.log("FACTORY", factory);
                     });
                 }
 
-                function gatherInheritedImplementations () {
-                    var implementations = [];
-                    return LIB.Promise.all(entity.inheritedImplementations.map(function (config) {
-                        return config.impl.then(function (config) {
-                            return config.assemble().then(function (config) {
-                                implementations.push(config.prototype);
-                            });
-                        });
-                    })).then(function () {
-                        return implementations;
-                    });
-                }
-
-                function instanciateEntityMappings (inheritedImplementations) {
+                function instanciateEntityMappings () {
                     var mappings = {};
-
-console.log(path, "instanciateEntityMappings -1- entity.mappings", entity.mappings);
-console.log("instanciateEntityMappings -1- inheritedImplementations", inheritedImplementations);
-                    inheritedImplementations.forEach(function (inheritedImplementation) {
-                        if (inheritedImplementation["@entities"]) {
-                            LIB._.assign(mappings, inheritedImplementation["@entities"]);
-                        }
-                    });
-
-console.log("instanciateEntityMappings -2- mappings", mappings);
 
                     return LIB.Promise.all(Object.keys(entity.mappings).map(function (alias) {
 
-console.log("TRIGGER ASSEMBLE ENTITY::alias", alias);
+                        return entity.mappings[alias].assembler.assemble(
+                            entity.mappings[alias].overrides.map(function (override) {
+                                return override.assembler;
+                            })
+                        ).then(function (configOverrides) {
 
-                        return entity.mappings[alias].assembler.assemble().then(function (configOverrides) {
+                            function getImpl () {
+                                var impl = entity.mappings[alias].impl;
+                                entity.mappings[alias].overrides.forEach(function (override) {
+                                    if (override.impl) {
+                                        if (impl) {
+                                            // TODO: Implement object inheritance if there are more
+                                            //       than one implementation.
+                                            throw new Error("NYI: Multiple entity implementations");
+                                        }
+                                        impl = override.impl;
+                                    }
+                                });
+                                return impl;
+                            }
+                            
+                            
+                            var impl = getImpl();
+                            if (impl) {
+                                return impl.then(function (config) {
 
-console.log("TRIGGER ASSEMBLE ENTITY::configOverrides", configOverrides);
-console.log("TRIGGER ASSEMBLE ENTITY::entity.mappings[alias]", entity.mappings[alias]);
-
-                            if (entity.mappings[alias].impl) {
-                                return entity.mappings[alias].impl.then(function (config) {
-
-                                    return config.assemble(configOverrides).then(function (config) {
+                                    return config.assemble(entity, configOverrides).then(function (config) {
                                         mappings[alias] = config;
                                     });
                                 });
                             } else {
-                                mappings[alias] = config;
+                                mappings[alias] = configOverrides;
                             }
                         });
                     })).then(function () {
-
-console.log("instanciateEntityMappings -3- mappings", mappings);
 
                         return mappings;
                     });
@@ -507,29 +553,28 @@ console.log("instanciateEntityMappings -3- mappings", mappings);
                 function instanciateEntityInstances (mappings) {
                     var instances = {};
 
-//console.log("instanciateEntityInstances mappings", mappings);
-//console.log("instanciateEntityInstances entity", entity);
-
                     return LIB.Promise.all(Object.keys(entity.instances).map(function (alias) {
 
-                        return entity.instances[alias].assembler.assemble().then(function (configOverrides) {
+                        return entity.instances[alias].assembler.assemble(
+                            entity.instances[alias].overrides.map(function (override) {
+                                return override.assembler;
+                            })
+                        ).then(function (configOverrides) {
 
                             var entityClass = mappings[entity.instances[alias].entityAlias];
                             if (!entityClass) {
                                 throw new Error("Entity '" + entity.instances[alias].entityAlias + "' used for instance '" + alias + "' not mapped!");
                             }
+
 /*
-                                        var instance = Object.create({
-                                            "$impl": impl
-                                        });
-                                        LIB._.assign(instance, entityConfig)
-                                        instances[instanceAlias] = instance;
-*/                                        
+                            var instance = Object.create({
+                                "$impl": impl
+                            });
+                            LIB._.assign(instance, entityConfig)
+                            instances[instanceAlias] = instance;
+*/
 
                             instances[alias] = new entityClass(configOverrides);
-
-//console.log("instances[alias]", instances[alias].__proto__);
-
                         });
                     })).then(function () {
                         return instances;
@@ -538,26 +583,21 @@ console.log("instanciateEntityMappings -3- mappings", mappings);
 
                 return instanciateEntityImplementation().then(function (impl) {
 
-                    return gatherInheritedImplementations().then(function (inheritedImplementations) {
+                    return instanciateEntityMappings().then(function (mappings) {
 
-console.log("inheritedImplementations", inheritedImplementations);
-    
-                        return instanciateEntityMappings(inheritedImplementations).then(function (mappings) {
+//console.log("GOT MAPPINGS", mappings);
 
-    //console.log("GOT MAPPINGS", mappings);
-    
-                            if (Object.keys(mappings).length) {
-                                impl.prototype["@entities"] = mappings;
+                        if (Object.keys(mappings).length) {
+                            impl.prototype["@entities"] = mappings;
+                        }
+                        return instanciateEntityInstances(impl.prototype["@entities"] || {}).then(function (instances) {
+                            if (Object.keys(instances).length > 0) {
+                                impl.prototype["@instances"] = instances;
                             }
-                            return instanciateEntityInstances(impl.prototype["@entities"] || {}).then(function (instances) {
-                                if (Object.keys(instances).length > 0) {
-                                    impl.prototype["@instances"] = instances;
-                                }
-    
-    //console.log("FINAL IMPL", impl.prototype);
-    
-                                return impl;
-                            });
+
+//console.log("FINAL IMPL", impl.prototype);
+
+                            return impl;
                         });
                     });
                 });
@@ -569,7 +609,10 @@ console.log("inheritedImplementations", inheritedImplementations);
 
             return parseFile(path).then(function (config) {
 
-                return config.assemble();
+                return config.flattenExtends().then(function () {
+
+                    return config.assemble();
+                });
             });
         }
     

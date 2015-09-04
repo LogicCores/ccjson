@@ -42,7 +42,7 @@ describe('ccjson', function() {
 
 
     it('01-EntityImplementation', function (done) {
-return done();        
+//return done();        
         return CCJSON.then(function (CCJSON) {
             return CCJSON.parseFile(
                 PATH.join(__dirname, "assets/01-EntityImplementation/entity.ccjson")
@@ -54,14 +54,14 @@ return done();
     });
 
     it('02-EntityMapping', function (done) {
-return done();
+//return done();
         return CCJSON.then(function (CCJSON) {
             return CCJSON.parseFile(
                 PATH.join(__dirname, "assets/02-EntityMapping/config.ccjson")
             ).then(function (config) {
                 config.prototype["@entities"]["entity"] = config.prototype["@entities"]["entity"].prototype;
 
-console.log("config", JSON.stringify(config.prototype, null, 4));
+//console.log("config", JSON.stringify(config.prototype, null, 4));
 
                 ASSERT.deepEqual(config.prototype, {
                     "@entities": {
@@ -78,7 +78,7 @@ console.log("config", JSON.stringify(config.prototype, null, 4));
     });
 
     it('03-EntityInstance', function (done) {
-return done();        
+//return done();        
         return CCJSON.then(function (CCJSON) {
             return CCJSON.parseFile(
                 PATH.join(__dirname, "assets/03-EntityInstance/config.ccjson")
@@ -122,13 +122,13 @@ return done();
                 PATH.join(__dirname, "assets/04-ConfigInheritance/config.ccjson")
             ).then(function (config) {
 
-console.log("config", JSON.stringify(config.prototype, null, 4));
+//console.log("config", JSON.stringify(config.prototype, null, 4));
 
                 config.prototype["@entities"]["entity"] = config.prototype["@entities"]["entity"].prototype;
                 config.prototype["@instances"]["inst1"] = config.prototype["@instances"]["inst1"].toString();
                 config.prototype["@instances"]["inst2"] = config.prototype["@instances"]["inst2"].toString();
                 config.prototype["@instances"]["inst3"] = config.prototype["@instances"]["inst3"].toString();
-console.log("config", JSON.stringify(config.prototype, null, 4));
+//console.log("config", JSON.stringify(config.prototype, null, 4));
 
                 ASSERT.deepEqual(config.prototype, {
                     "@entities": {
