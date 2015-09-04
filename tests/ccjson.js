@@ -45,7 +45,6 @@ describe('ccjson', function() {
     };
 
 
-
     it('01-EntityImplementation', function (done) {
 //return done();        
         return CCJSON.then(function (CCJSON) {
@@ -173,7 +172,7 @@ describe('ccjson', function() {
             });
         }).catch(done);
     });
-    
+
 
     it('05-MultipleEntityMappingsAndInstances', function (done) {
 //return done();        
@@ -234,6 +233,73 @@ describe('ccjson', function() {
                 return done();
             });
         }).catch(done);
-    });    
+    });
+
+
+    it('06-Variables', function (done) {
+//return done();
+
+        return CCJSON.then(function (CCJSON) {
+            return CCJSON.parseFile(
+                PATH.join(__dirname, "assets/06-Variables/config.ccjson"),
+                {
+                    env: function (name) {
+                        if (name === "MY_ENV_VAR") {
+                            return "my-env-var-value";
+                        }
+                        throw new Error("Env variable '" + name + "' not declared!");
+                    }
+                }
+            ).then(function (config) {
+
+                config.prototype["@entities"]["entity"] = config.prototype["@entities"]["entity"].prototype;
+                config.prototype["@instances"]["inst1"] = config.prototype["@instances"]["inst1"].toString();
+                config.prototype["@instances"]["inst2"] = config.prototype["@instances"]["inst2"].toString();
+                config.prototype["@instances"]["inst3"] = config.prototype["@instances"]["inst3"].toString();
+
+//console.log("config", JSON.stringify(config.prototype, null, 4));
+
+                ASSERT.deepEqual(config.prototype, {
+                    "@entities": {
+                        "entity": EXPECTATIONS["01-EntityImplementation"]({
+                            "config": {
+                                "ourBasePathInSubMappings": PATH.join(__dirname, "assets/06-Variables/sub"),
+                                "ourBasePathInMappings": PATH.join(__dirname, "assets/06-Variables")
+                            }
+                        })
+                    },
+                    "@instances": {
+                        "inst1": EXPECTATIONS["01-EntityImplementation"]({
+                            "config": {
+                                "myvar": "my-env-var-value",
+                                "ourBasePathInSubMappings": PATH.join(__dirname, "assets/06-Variables/sub"),
+                                "ourBasePathInMappings": PATH.join(__dirname, "assets/06-Variables"),
+                                "ourBasePathInSubInstances": PATH.join(__dirname, "assets/06-Variables/sub"),
+                                "ourBasePathInInstances": PATH.join(__dirname, "assets/06-Variables/sub")
+                            }
+                        }),
+                        "inst2": EXPECTATIONS["01-EntityImplementation"]({
+                            "config": {
+                                "ourBasePathInSubMappings": PATH.join(__dirname, "assets/06-Variables/sub"),
+                                "ourBasePathInMappings": PATH.join(__dirname, "assets/06-Variables"),
+                                "ourBasePathInSubInstances": PATH.join(__dirname, "assets/06-Variables"),
+                                "ourBasePathInInstances": PATH.join(__dirname, "assets/06-Variables")
+                            }
+                        }),
+                        "inst3": EXPECTATIONS["01-EntityImplementation"]({
+                            "config": {
+                                "myvar": "my-env-var-value",
+                                "ourBasePathInSubMappings": PATH.join(__dirname, "assets/06-Variables"),
+                                "ourBasePathInMappings": PATH.join(__dirname, "assets/06-Variables"),
+                                "ourBasePathInInstances": PATH.join(__dirname, "assets/06-Variables")
+                            }
+                        })
+                    }
+                });
+
+                return done();
+            });
+        }).catch(done);
+    });
 
 });

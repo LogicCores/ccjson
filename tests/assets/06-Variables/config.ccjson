@@ -1,0 +1,21 @@
+{
+    "@": {
+        "$": [
+            "./sub/config.ccjson"
+        ],
+        "entity": {
+            "ourBasePathInMappings": "{{__DIRNAME__}}"
+        }
+    },
+    "@entity": {
+        "$inst2": {
+            "ourBasePathInInstances": "{{__DIRNAME__}}",
+            "ourBasePathInSubInstances": "{{__DIRNAME__}}"
+        },
+        "$inst3": {
+            "ourBasePathInInstances": "{{__DIRNAME__}}",
+            "ourBasePathInSubMappings": "{{__DIRNAME__}}",
+            "myvar": "{{ENV.MY_ENV_VAR}}"
+        }
+    }
+}

@@ -17,9 +17,10 @@ exports.forLib = function (LIB) {
 
         const CLARINET = require("clarinet");
         const EVENTS = require("events");
+        const ESCAPE_REGEXP = require("escape-regexp-component");
 
 
-        function parseFile (path) {
+        function parseFile (path, parseOptions) {
             
 //console.log("\n\n---------------------------------------------------");
 //console.log("PARSE CJSON FILE:", path);
@@ -29,7 +30,7 @@ exports.forLib = function (LIB) {
                 
                 try {
 
-                    var config = new Config(path);
+                    var config = new Config(path, parseOptions);
 
                     var stream = CLARINET.createStream({});
     
@@ -255,6 +256,22 @@ exports.forLib = function (LIB) {
                         nextToken("key", key);
                     });
                     stream.on("value", function (value) {
+                        
+                        // TODO: Resolve these in assembler so we can use promises.
+                        if (typeof value === "string") {
+                            // TODO: Optionally don't replace variables
+                            value = value.replace(/\{\{__DIRNAME__\}\}/g, LIB.path.dirname(path));
+                            
+                            var re = /\{\{(!)?(?:env|ENV)\.([^\}]+)\}\}/g;
+                            var m = null;
+                            while (m = re.exec(value)) {
+                                value = value.replace(
+                                    new RegExp(ESCAPE_REGEXP(m[0]), "g"),
+                                    parseOptions.env(m[2])
+                                );
+                            }
+                        }
+
                         nextToken("value", value);
                     });
                     stream.on("closeobject", function () {
@@ -375,7 +392,7 @@ exports.forLib = function (LIB) {
         ConfigObjectAssembler.prototype = Object.create(EVENTS.EventEmitter.prototype);
 
         
-        var Config = function (path) {
+        var Config = function (path, parseOptions) {
             var self = this;
 
             var entity = {
@@ -401,7 +418,7 @@ exports.forLib = function (LIB) {
 
             self.registerInheritedEntityImplementation = function (path) {
                 entity.inheritedImplementations.push({
-                    impl: parseFile(path)
+                    impl: parseFile(path, parseOptions)
                 });
             }
 
@@ -414,7 +431,7 @@ exports.forLib = function (LIB) {
                 };
                 return {
                     onImplementation: function (path) {
-                        entity.mappings[alias].impl = parseFile(path);
+                        entity.mappings[alias].impl = parseFile(path, parseOptions);
                     },
                     drain: entity.mappings[alias].assembler
                 };
@@ -613,9 +630,9 @@ exports.forLib = function (LIB) {
         }
 
 
-        exports.parseFile = function (path) {
+        exports.parseFile = function (path, options) {
 
-            return parseFile(path).then(function (config) {
+            return parseFile(path, options).then(function (config) {
 
                 return config.flattenExtends().then(function () {
 
