@@ -26,274 +26,298 @@ exports.forLib = function (LIB) {
 //console.log("PARSE CJSON FILE:", path);
 //console.log("---------------------------------------------------");
 
-            return new LIB.Promise(function (resolve, reject) {
-                
-                try {
-
-                    var config = new Config(path, parseOptions);
-
-                    var stream = CLARINET.createStream({});
-    
-                    stream.on("error", function (err) {
-                        // unhandled errors will throw, since this is a proper node
-                        // event emitter.
-                        console.error("error!", err);
-                        // clear the error
-//                        this._parser.error = null
-//                        this._parser.resume()
-                        return reject(err);
+            function ensurePath (path) {
+                return new LIB.Promise(function (resolve, reject) {
+                    return LIB.fs.exists(path, function (exists) {
+                        if (exists) {
+                            return resolve(path);
+                        }
+                        if (
+                            parseOptions.on &&
+                            typeof parseOptions.on.fileNotFound === "function"
+                        ) {
+                            try {
+                                return parseOptions.on.fileNotFound(path).then(resolve, reject);
+                            } catch (err) {
+                                return reject(err);
+                            }
+                        }
+                        return reject(new Error("File not found '" + path + "'!"));
                     });
+                });
+            }
+            
+            return ensurePath(path).then(function (path) {
 
-                    var current = {
-                        section: null,
-                        drain: null,
-                        drainCount: 0,
-                        drained: false,
-                        entityAlias: null,
-                        captureImplementation: false
-                    };
-
-                    function nextToken (type, value) {
-
-                        if (current.drain) {
-//console.log("  ... draining token", type, value);
-
-
-                            // 02-EntityMapping
+                return new LIB.Promise(function (resolve, reject) {
+    
+                    try {
+    
+                        var config = new Config(path, parseOptions);
+    
+                        var stream = CLARINET.createStream({});
+        
+                        stream.on("error", function (err) {
+                            // unhandled errors will throw, since this is a proper node
+                            // event emitter.
+                            console.error("error!", err);
+                            // clear the error
+    //                        this._parser.error = null
+    //                        this._parser.resume()
+                            return reject(err);
+                        });
+    
+                        var current = {
+                            section: null,
+                            drain: null,
+                            drainCount: 0,
+                            drained: false,
+                            entityAlias: null,
+                            captureImplementation: false
+                        };
+    
+                        function nextToken (type, value) {
+    
+                            if (current.drain) {
+    //console.log("  ... draining token", type, value);
+    
+    
+                                // 02-EntityMapping
+                                if (
+                                    current.drainCount === 0 &&
+                                    type === "openobject" &&
+                                    typeof current.drain.onImplementation === "function" &&
+                                    value === "$"
+                                ) {
+                                    current.captureImplementation = true
+                                } else
+                                if (
+                                    current.drainCount === 0 &&
+                                    type === "value" &&
+                                    typeof current.drain.onImplementation === "function" &&
+                                    current.captureImplementation === true
+                                ) {
+                                    current.drain.onImplementation(
+                                        /^\//.test(value) ? value : LIB.path.join(path, "..", value)
+                                    );
+                                    current.captureImplementation = false;
+                                } else
+    
+                                {
+                                    current.drainCount += 1;
+                                    current.drain.drain.emit(type, value);
+                                }
+                                return ;
+                            }
+    
+    //console.log("NEXT TOKEN", type, value);
+    
+                            if (current.drained) {
+                                current.drained = false;
+    
+    //console.log(" .. DRAINED", current.section);
+                                // 02-EntityMapping
+                                if (
+                                    current.section === "mapping" &&
+                                    type === "closeobject"
+                                ) {
+                                    current.section = null;
+                                    return;
+                                } else
+                                // 05-MultipleEntityMappingsAndInstances
+                                if (
+                                    current.section === "mapping" &&
+                                    type === "key"
+                                ) {
+                                    current.section = "mapping";
+                                } else
+                                // 03-EntityInstance
+                                if (
+                                    current.section === "instance" &&
+                                    type === "key"
+                                ) {
+                                    current.section = "entity";
+                                } else
+                                // 04-ConfigInheritance
+                                if (
+                                    current.section === "instance" &&
+                                    type === "closeobject"
+                                ) {
+                                    current.section = "entity";
+                                    return;
+                                }
+                            }
+    
+    
+                            // 01-EntityImplementation
                             if (
-                                current.drainCount === 0 &&
+                                current.section === null &&
                                 type === "openobject" &&
-                                typeof current.drain.onImplementation === "function" &&
                                 value === "$"
                             ) {
-                                current.captureImplementation = true
+                                current.section = "impl"
                             } else
                             if (
-                                current.drainCount === 0 &&
-                                type === "value" &&
-                                typeof current.drain.onImplementation === "function" &&
-                                current.captureImplementation === true
+                                current.section === "impl" &&
+                                type === "value"
                             ) {
-                                current.drain.onImplementation(
-                                    LIB.path.join(path, "..", value)
+                                current.drain = config.registerEntityImplementation(
+                                    /^\//.test(value) ? value : LIB.path.join(path, "..", value)
                                 );
-                                current.captureImplementation = false;
                             } else
-
-                            {
-                                current.drainCount += 1;
-                                current.drain.drain.emit(type, value);
-                            }
-                            return ;
-                        }
-
-//console.log("NEXT TOKEN", type, value);
-
-                        if (current.drained) {
-                            current.drained = false;
-
-//console.log(" .. DRAINED", current.section);
+                            
                             // 02-EntityMapping
                             if (
-                                current.section === "mapping" &&
-                                type === "closeobject"
+                                current.section === null &&
+                                type === "openobject" &&
+                                value === "@"
                             ) {
-                                current.section = null;
-                                return;
+                                current.section = "config"
                             } else
-                            // 05-MultipleEntityMappingsAndInstances
                             if (
-                                current.section === "mapping" &&
-                                type === "key"
+                                current.section === "config" &&
+                                type === "openobject" &&
+                                value !== "$"
                             ) {
+                                current.drain = config.registerEntityMappingDeclaration(value);
                                 current.section = "mapping";
                             } else
+    
                             // 03-EntityInstance
                             if (
-                                current.section === "instance" &&
-                                type === "key"
+                                (
+                                    current.section === null ||
+                                    current.section === "entity"
+                                ) &&
+                                type === "key" &&
+                                /^@/.test(value)
                             ) {
                                 current.section = "entity";
+                                current.entityAlias = value.substring(1);
                             } else
+                            if (
+                                current.section === "entity" &&
+                                current.entityAlias !== null &&
+                                (type === "openobject" || type === "key") &&
+                                /^\$/.test(value)
+                            ) {
+                                current.section = "instance";
+                                current.drain = config.registerEntityInstanceDeclaration(
+                                    current.entityAlias,
+                                    value.substring(1)
+                                );
+    //                            current.drain.drain.activeEntityInstance.emit("key", key);
+                            } else
+                            
                             // 04-ConfigInheritance
                             if (
-                                current.section === "instance" &&
+                                current.section === "config" &&
+                                type === "openobject" &&
+                                value === "$"
+                            ) {
+                                current.section = "inherit";
+                            } else
+                            if (
+                                current.section === "inherit" &&
+                                type === "openarray"
+                            ) {
+                                // Ignore
+                            } else
+                            if (
+                                current.section === "inherit" &&
+                                type === "value"
+                            ) {
+                                config.registerInheritedEntityImplementation(
+                                    /^\//.test(value) ? value : LIB.path.join(path, "..", value)
+                                );
+                            } else
+                            if (
+                                current.section === "inherit" &&
+                                type === "closearray"
+                            ) {
+                                current.section = "config";
+                            } else
+                            if (
+                                (
+                                    current.section === "config" ||
+                                    current.section === "mapping"
+                                ) &&
+                                type === "key"
+                            ) {
+                                current.drain = config.registerEntityMappingDeclaration(value);
+                                current.section = "mapping";
+                            } else
+                            if (
+                                current.section === "entity" &&
                                 type === "closeobject"
                             ) {
-                                current.section = "entity";
-                                return;
-                            }
-                        }
-
-
-                        // 01-EntityImplementation
-                        if (
-                            current.section === null &&
-                            type === "openobject" &&
-                            value === "$"
-                        ) {
-                            current.section = "impl"
-                        } else
-                        if (
-                            current.section === "impl" &&
-                            type === "value"
-                        ) {
-                            current.drain = config.registerEntityImplementation(
-                                LIB.path.join(path, "..", value)
-                            );
-                        } else
-                        
-                        // 02-EntityMapping
-                        if (
-                            current.section === null &&
-                            type === "openobject" &&
-                            value === "@"
-                        ) {
-                            current.section = "config"
-                        } else
-                        if (
-                            current.section === "config" &&
-                            type === "openobject" &&
-                            value !== "$"
-                        ) {
-                            current.drain = config.registerEntityMappingDeclaration(value);
-                            current.section = "mapping";
-                        } else
-
-                        // 03-EntityInstance
-                        if (
-                            (
-                                current.section === null ||
-                                current.section === "entity"
-                            ) &&
-                            type === "key" &&
-                            /^@/.test(value)
-                        ) {
-                            current.section = "entity";
-                            current.entityAlias = value.substring(1);
-                        } else
-                        if (
-                            current.section === "entity" &&
-                            current.entityAlias !== null &&
-                            (type === "openobject" || type === "key") &&
-                            /^\$/.test(value)
-                        ) {
-                            current.section = "instance";
-                            current.drain = config.registerEntityInstanceDeclaration(
-                                current.entityAlias,
-                                value.substring(1)
-                            );
-//                            current.drain.drain.activeEntityInstance.emit("key", key);
-                        } else
-                        
-                        // 04-ConfigInheritance
-                        if (
-                            current.section === "config" &&
-                            type === "openobject" &&
-                            value === "$"
-                        ) {
-                            current.section = "inherit";
-                        } else
-                        if (
-                            current.section === "inherit" &&
-                            type === "openarray"
-                        ) {
-                            // Ignore
-                        } else
-                        if (
-                            current.section === "inherit" &&
-                            type === "value"
-                        ) {
-                            config.registerInheritedEntityImplementation(
-                                LIB.path.join(path, "..", value)
-                            );
-                        } else
-                        if (
-                            current.section === "inherit" &&
-                            type === "closearray"
-                        ) {
-                            current.section = "config";
-                        } else
-                        if (
-                            (
-                                current.section === "config" ||
-                                current.section === "mapping"
-                            ) &&
-                            type === "key"
-                        ) {
-                            current.drain = config.registerEntityMappingDeclaration(value);
-                            current.section = "mapping";
-                        } else
-                        if (
-                            current.section === "entity" &&
-                            type === "closeobject"
-                        ) {
-                            current.section = "config";
-                        } else
-                        
-                        
-                        {
-
-//console.log("  **** UNHANDLED TOKEN", type, value, current.section);
-                        }
-
-                        // A new drain was registered so we ensure it unhooks itself when done.
-                        // TODO: We should terminate drain instead of letting it do it itself?
-                        if (current.drain) {
-                            current.drain.drain.once("end", function () {
-                                // Is set for the next token only so we can cleanup
-                                current.drained = true;
-                                current.drain = null;
-                                current.drainCount = 0;
-                            });
-                        }
-                    }
-
-                    stream.on("openobject", function (key) {
-                        nextToken("openobject", key);
-                    });
-                    stream.on("key", function (key) {
-                        nextToken("key", key);
-                    });
-                    stream.on("value", function (value) {
-                        
-                        // TODO: Resolve these in assembler so we can use promises.
-                        if (typeof value === "string") {
-                            // TODO: Optionally don't replace variables
-                            value = value.replace(/\{\{__DIRNAME__\}\}/g, LIB.path.dirname(path));
+                                current.section = "config";
+                            } else
                             
-                            var re = /\{\{(!)?(?:env|ENV)\.([^\}]+)\}\}/g;
-                            var m = null;
-                            while (m = re.exec(value)) {
-                                value = value.replace(
-                                    new RegExp(ESCAPE_REGEXP(m[0]), "g"),
-                                    parseOptions.env(m[2])
-                                );
+                            
+                            {
+    
+    //console.log("  **** UNHANDLED TOKEN", type, value, current.section);
+                            }
+    
+                            // A new drain was registered so we ensure it unhooks itself when done.
+                            // TODO: We should terminate drain instead of letting it do it itself?
+                            if (current.drain) {
+                                current.drain.drain.once("end", function () {
+                                    // Is set for the next token only so we can cleanup
+                                    current.drained = true;
+                                    current.drain = null;
+                                    current.drainCount = 0;
+                                });
                             }
                         }
-
-                        nextToken("value", value);
-                    });
-                    stream.on("closeobject", function () {
-                        nextToken("closeobject");
-                    });
-                    stream.on("openarray", function () {
-                        nextToken("openarray");
-                    });
-                    stream.on("closearray", function () {
-                        nextToken("closearray");
-                    });
-                    stream.on("end", function () {
-                        return resolve(config);
-                    });
-
-                    // pipe is supported, and it's readable/writable
-                    // same chunks coming in also go out.
-                    LIB.fs.createReadStream(path).pipe(stream);
     
-                } catch (err) {
-                    return reject(err);
-                }
+                        stream.on("openobject", function (key) {
+                            nextToken("openobject", key);
+                        });
+                        stream.on("key", function (key) {
+                            nextToken("key", key);
+                        });
+                        stream.on("value", function (value) {
+                            
+                            // TODO: Resolve these in assembler so we can use promises.
+                            if (typeof value === "string") {
+                                // TODO: Optionally don't replace variables
+                                value = value.replace(/\{\{__DIRNAME__\}\}/g, LIB.path.dirname(path));
+                                
+                                var re = /\{\{(!)?(?:env|ENV)\.([^\}]+)\}\}/g;
+                                var m = null;
+                                while (m = re.exec(value)) {
+                                    value = value.replace(
+                                        new RegExp(ESCAPE_REGEXP(m[0]), "g"),
+                                        parseOptions.env(m[2])
+                                    );
+                                }
+                            }
+    
+                            nextToken("value", value);
+                        });
+                        stream.on("closeobject", function () {
+                            nextToken("closeobject");
+                        });
+                        stream.on("openarray", function () {
+                            nextToken("openarray");
+                        });
+                        stream.on("closearray", function () {
+                            nextToken("closearray");
+                        });
+                        stream.on("end", function () {
+                            return resolve(config);
+                        });
+    
+                        // pipe is supported, and it's readable/writable
+                        // same chunks coming in also go out.
+                        LIB.fs.createReadStream(path).pipe(stream);
+        
+                    } catch (err) {
+                        return reject(err);
+                    }
+                });
             });
         }
 
