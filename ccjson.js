@@ -7,7 +7,11 @@ exports.makeLib = function () {
         path: require("path"),
         fs: require("fs"),
         Promise: require("bluebird"),
-        _: require("lodash")
+        _: require("lodash"),
+        traverse: require("traverse"),
+        CJSON: {
+            stringify: require("canonical-json")
+        }
     }    
 }
 
@@ -76,7 +80,7 @@ exports.forLib = function (LIB) {
                             captureImplementation: false
                         };
     
-                        function nextToken (type, value) {
+                        function nextToken (type, value, valueMeta) {
                             
                             try {
 
@@ -134,7 +138,7 @@ exports.forLib = function (LIB) {
     
                                     {
                                         current.drainCount += 1;
-                                        drainOnStart.drain.assembler.emit(type, value);
+                                        drainOnStart.drain.assembler.emit(type, value, valueMeta);
                                     }
                                     return;
                                 }
@@ -314,23 +318,57 @@ exports.forLib = function (LIB) {
                             nextToken("key", key);
                         });
                         stream.on("value", function (value) {
-                            
-                            // TODO: Resolve these in assembler so we can use promises.
+
+                            var valueMeta = [];
+
+                            // These are set in stone after parsing.
+                            // If you need dynamic variables use '{{$*}}' variables.
                             if (typeof value === "string") {
                                 // TODO: Optionally don't replace variables
                                 value = value.replace(/\{\{__DIRNAME__\}\}/g, LIB.path.dirname(path));
-                                
-                                var re = /\{\{(!)?(?:env|ENV)\.([^\}]+)\}\}/g;
                                 var m = null;
+
+                                var re = /\{\{(!)?(?:env|ENV)\.([^\}]+)\}\}/g;
                                 while (m = re.exec(value)) {
                                     value = value.replace(
                                         new RegExp(ESCAPE_REGEXP(m[0]), "g"),
                                         parseOptions.env(m[2])
                                     );
                                 }
+
+                                // Check for reference to entity instance variable or local variable selector
+                                var re = /\{\{\$(\.)?([^\}]+)\}\}/g;
+                                while ( (m = re.exec(value)) ) {
+                                    function act(m) {
+                                        function replace (string, value) {
+                                            return string.replace(
+                                                new RegExp(ESCAPE_REGEXP(m[0]), "g"),
+                                                value
+                                            );
+                                        }
+                                        if (m[1]) {
+                                            // We have a local variable selector
+                                            valueMeta.push({
+                                                "type": "local-variable-selector",
+                                                "selector": ("." + m[2]).split("/"),
+                                                "replace": replace
+                                            });
+                                        } else {
+                                            // We have a reference to an entity instance variable
+                                            var selectorParts = m[2].split("/");
+                                            valueMeta.push({
+                                                "type": "instance-variable-selector",
+                                                "instanceAlias": selectorParts.shift(),
+                                                "selector": selectorParts,
+                                                "replace": replace
+                                            });
+                                        }
+                                    }
+                                    act(m);
+                                }
                             }
-    
-                            nextToken("value", value);
+
+                            nextToken("value", value, valueMeta);
                         });
                         stream.on("closeobject", function () {
                             nextToken("closeobject");
@@ -368,11 +406,28 @@ exports.forLib = function (LIB) {
             var currentPointer = config;
             var currentKey = null;
 
+            // TODO: Use 'jsondiffpatch' to ultimately merge configs
+            //       so we should record all data events as individual patch records.
+            
+            var currentPath = [];
+
             self.on("key", function (key) {
                 currentKey = key;
+                currentPath.push(key);
             });
             
-            self.on("value", function (value) {
+            self.on("value", function (value, valueMeta) {
+                if (valueMeta.length > 0) {
+                    var rawValue = value;
+                    var ourPath = [].concat(currentPath);
+                    value = function () {
+                        return {
+                            path: ourPath,
+                            meta: valueMeta,
+                            value: rawValue
+                        };
+                    }
+                }
                 if (currentKey) {
                     currentPointer[currentKey] = value;
                 } else
@@ -381,16 +436,17 @@ exports.forLib = function (LIB) {
                 } else {
                     throw new Error("Don't know how to attach value '" + value + "'");
                 }
+                currentPath.pop();
             });
 
             self.on("openobject", function (key) {
                 if (currentKey) {
-                pointerHistory.push(currentPointer);
+                    pointerHistory.push(currentPointer);
                     currentPointer = currentPointer[currentKey] = {};
                     currentKey = key;
                 } else
                 if (Array.isArray(currentPointer)) {
-                pointerHistory.push(currentPointer);
+                    pointerHistory.push(currentPointer);
                     var newPointer = {};
                     currentPointer.push(newPointer);
                     currentPointer = newPointer;
@@ -402,8 +458,10 @@ exports.forLib = function (LIB) {
 //                    console.error("currentPointer", currentPointer);
 //                    throw new Error("Don't know how to attach object '" + key + "'");
                 }
+                currentPath.push(key);
             });
             self.on("closeobject", function () {
+                currentPath.pop();
                 if (pointerHistory.length === 0) {
                     self.emit("end");
                     return;
@@ -544,53 +602,121 @@ exports.forLib = function (LIB) {
 
                             return layer.assembler.assemble().then(function (config) {
 
-                                if (layer.mountPath) {
-                                    var mountPathParts = layer.mountPath.split("/");
-                                    var mountNode = mergedConfig;
-                                    var key = null;
-                                    while ( (key = mountPathParts.shift()) ) {
-                                        if (!mountNode[key]) {
-                                            mountNode[key] = {};
-                                        }
-                                        mountNode = mountNode[key];
-                                    }
-                                    LIB._.merge(
-                                        mountNode,
-                                        LIB._.cloneDeep(config)
-                                    );
-                                } else {
-                                    LIB._.merge(
-                                        mergedConfig,
-                                        LIB._.cloneDeep(config)
-                                    );
-                                }
-
-                                // Now that config is merged init the instance aspect if applicable
-                                // and merge the resulting config.
-                                if (layer.aspectInstanceAlias) {
-                                    var instanceAliasParts = layer.aspectInstanceAlias.split(".");
-                                    var instanceAspectMethod = instanceAliasParts.pop();
-                                    var instanceAspectAlias = instanceAliasParts.join(".");
-                                    if (!entity.instances[instanceAspectAlias]) {
-                                        throw new Error("No declared instance found for aspect alias '" + instanceAspectAlias + "' while resolving aspect instance for entity '" + entityAlias + "' instance '" + instanceAlias + "'");
-                                    }
-
-                                    return getEntityInstance(instanceAspectAlias).then(function (instance) {
-                                        if (typeof instance.AspectInstance === "function") {
-                                            try {
-                                                return instance.AspectInstance(mergedConfig).then(function (config) {
-                                                    LIB._.merge(
-                                                        mergedConfig,
-                                                        LIB._.cloneDeep(config)
+                                function resolveVariables (config) {
+                                    
+                                    function fetchVariable (config, info) {
+                                        var targetString = info.value;
+                                        return LIB.Promise.all(info.meta.map(function (meta) {
+                                            return LIB.Promise.try(function () {
+                                                if (meta.type === "instance-variable-selector") {
+                                                    return getEntityInstance(meta.instanceAlias).then(function (instance) {
+                                                        return instance.getAt(
+                                                            LIB.path.join(
+                                                                info.path.join("/"),
+                                                                "..",
+                                                                meta.selector.join("/")
+                                                            ).split("/")
+                                                        );
+                                                    });
+                                                } else
+                                                if (meta.type === "local-variable-selector") {
+                                                    return LIB.traverse(config).get(
+                                                        LIB.path.join(
+                                                            info.path.join("/"),
+                                                            "..",
+                                                            meta.selector.join("/")
+                                                        ).split("/")
                                                     );
-                                                });
-                                            } catch (err) {
-                                                console.error("Error while running AspectInstance for '" + instanceAspectAlias +"' while resolving aspect instance for entity '" + entityAlias + "' instance '" + instanceAlias + "'", err.stack);
-                                                throw err;
-                                            }
+                                                } else {
+                                                    throw new Error("Variable type '" + info.type + "' not implemented!");
+                                                }
+                                            }).then(function (value) {
+                                                if (typeof value === "string") {
+                                                    targetString = meta.replace(targetString, value);
+                                                } else {
+                                                    targetString = value;
+                                                }
+                                            });
+                                        })).then(function () {
+                                            return targetString;
+                                        });
+                                    }
+
+                                    var startResolving = null;
+                                    var promiseChain = new LIB.Promise(function (resolve, reject) {
+                                        startResolving = resolve;
+                                    });
+                                    var resolvedConfig = config;
+                                    LIB.traverse(config).forEach(function (node) {
+                                        var self = this;
+                                        if (typeof node === "function") {
+                                            
+                                            promiseChain = promiseChain.then(function () {
+                                                return fetchVariable(resolvedConfig, node());
+                                            });
+                                            var setPath = self.path;
+                                            promiseChain.then(function (value) {
+                                                LIB.traverse(resolvedConfig).set(setPath, value);
+                                            });
                                         }
                                     });
+                                    // We start resolving after having setup all promises.
+                                    startResolving();
+                                    return promiseChain.then(function () {
+                                        return resolvedConfig;
+                                    });
                                 }
+
+                                return resolveVariables(config).then(function (config) {
+
+                                    if (layer.mountPath) {
+                                        var mountPathParts = layer.mountPath.split("/");
+                                        var mountNode = mergedConfig;
+                                        var key = null;
+                                        while ( (key = mountPathParts.shift()) ) {
+                                            if (!mountNode[key]) {
+                                                mountNode[key] = {};
+                                            }
+                                            mountNode = mountNode[key];
+                                        }
+                                        LIB._.merge(
+                                            mountNode,
+                                            LIB._.cloneDeep(config)
+                                        );
+                                    } else {
+                                        LIB._.merge(
+                                            mergedConfig,
+                                            LIB._.cloneDeep(config)
+                                        );
+                                    }
+    
+                                    // Now that config is merged init the instance aspect if applicable
+                                    // and merge the resulting config.
+                                    if (layer.aspectInstanceAlias) {
+                                        var instanceAliasParts = layer.aspectInstanceAlias.split(".");
+                                        var instanceAspectMethod = instanceAliasParts.pop();
+                                        var instanceAspectAlias = instanceAliasParts.join(".");
+                                        if (!entity.instances[instanceAspectAlias]) {
+                                            throw new Error("No declared instance found for aspect alias '" + instanceAspectAlias + "' while resolving aspect instance for entity '" + entityAlias + "' instance '" + instanceAlias + "'");
+                                        }
+    
+                                        return getEntityInstance(instanceAspectAlias).then(function (instance) {
+                                            if (typeof instance.AspectInstance === "function") {
+                                                try {
+                                                    return instance.AspectInstance(mergedConfig).then(function (config) {
+                                                        LIB._.merge(
+                                                            mergedConfig,
+                                                            LIB._.cloneDeep(config)
+                                                        );
+                                                    });
+                                                } catch (err) {
+                                                    console.error("Error while running AspectInstance for '" + instanceAspectAlias +"' while resolving aspect instance for entity '" + entityAlias + "' instance '" + instanceAlias + "'", err.stack);
+                                                    throw err;
+                                                }
+                                            }
+                                        });
+                                    }
+                                });
                             });
                         })).then(function () {
                             return mergedConfig;

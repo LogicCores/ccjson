@@ -15,7 +15,9 @@
         "$inst3": {
             "ourBasePathInInstances": "{{__DIRNAME__}}",
             "ourBasePathInSubMappings": "{{__DIRNAME__}}",
-            "myvar": "{{ENV.MY_ENV_VAR}}"
+            "myvar": "{{ENV.MY_ENV_VAR}}",
+            "myvarFromInst1": "value:{{$inst1/myvar}}:local:{{$./myvar}}",
+            "myobjFromInst1": "{{$inst1/myobj}}"
         }
     }
 }

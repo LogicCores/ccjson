@@ -14,6 +14,12 @@ exports.forLib = function (LIB) {
                     }));
                     return obj;
                 }
+                self.getAt = function (path) {
+                    var obj = {};
+                    LIB._.merge(obj, LIB._.cloneDeep(self.__proto__.config));
+                    LIB._.merge(obj, LIB._.cloneDeep(instanceConfig));
+                    return LIB.traverse(obj).get(path);
+                }
             }
             Entity.prototype._entity = "01-EntityImplementation/entity";
             Entity.prototype.config = defaultConfig;

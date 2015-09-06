@@ -25,7 +25,7 @@ exports.forLib = function (LIB) {
                     LIB._.merge(obj, LIB._.cloneDeep(self.__proto__.config));
                     LIB._.merge(obj, LIB._.cloneDeep(instanceConfig));
 
-                    var json = JSON.stringify(aspectConfig);
+                    var json = LIB.CJSON.stringify(aspectConfig);
                     json = json.replace(new RegExp("\\(EncryptedUsing" + obj.secret + "\\)", "g"), "");
                     aspectConfig = JSON.parse(json);
 

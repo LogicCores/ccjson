@@ -8,7 +8,8 @@ const FS = require("fs");
 const _ = require("lodash");
 const ASSERT = require("assert");
 var CCJSON = require("..");
-CCJSON = CCJSON.forLib(CCJSON.makeLib());
+const LIB = CCJSON.makeLib();
+CCJSON = CCJSON.forLib(LIB);
 
 
 describe('ccjson', function() {
@@ -273,7 +274,14 @@ describe('ccjson', function() {
                                 "ourBasePathInSubMappings": PATH.join(__dirname, "assets/06-Variables/sub"),
                                 "ourBasePathInMappings": PATH.join(__dirname, "assets/06-Variables"),
                                 "ourBasePathInSubInstances": PATH.join(__dirname, "assets/06-Variables/sub"),
-                                "ourBasePathInInstances": PATH.join(__dirname, "assets/06-Variables/sub")
+                                "ourBasePathInInstances": PATH.join(__dirname, "assets/06-Variables/sub"),
+                                "myvar": "sub:inst1:my-env-var-value",
+                                "myobj": {
+                                    "mysubvar": "myobj:sub:inst1:my-env-var-value"
+                                },
+                                "myobjDuplicate": {
+                                    "mysubvar": "myobj:sub:inst1:my-env-var-value"
+                                }
                             }
                         }),
                         "inst2": EXPECTATIONS["01-EntityImplementation"]({
@@ -289,7 +297,12 @@ describe('ccjson', function() {
                                 "myvar": "my-env-var-value",
                                 "ourBasePathInSubMappings": PATH.join(__dirname, "assets/06-Variables"),
                                 "ourBasePathInMappings": PATH.join(__dirname, "assets/06-Variables"),
-                                "ourBasePathInInstances": PATH.join(__dirname, "assets/06-Variables")
+                                "ourBasePathInInstances": PATH.join(__dirname, "assets/06-Variables"),
+                                "myvar": "my-env-var-value",
+                                "myvarFromInst1": "value:sub:inst1:my-env-var-value:local:my-env-var-value",
+                                "myobjFromInst1": {
+                                    "mysubvar": "myobj:sub:inst1:my-env-var-value"
+                                }
                             }
                         })
                     }

@@ -9,7 +9,11 @@
         "$inst1": {
             "ourBasePathInSubInstances": "{{__DIRNAME__}}",
             "ourBasePathInInstances": "{{__DIRNAME__}}",
-            "myvar": "{{env.MY_ENV_VAR}}"
+            "myvar": "sub:inst1:{{env.MY_ENV_VAR}}",
+            "myobj": {
+                "mysubvar": "myobj:{{$../myvar}}"
+            },
+            "myobjDuplicate": "{{$./myobj}}"
         },
         "$inst2": {
             "ourBasePathInSubInstances": "{{__DIRNAME__}}",
