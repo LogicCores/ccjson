@@ -49,7 +49,7 @@ describe('ccjson', function() {
 //return done();        
         return CCJSON.then(function (CCJSON) {
             return CCJSON.parseFile(
-                PATH.join(__dirname, "assets/01-EntityImplementation/entity.ccjson")
+                PATH.join(__dirname, "01-EntityImplementation/entity.ccjson")
             ).then(function (config) {
                 ASSERT.deepEqual(config.prototype, EXPECTATIONS["01-EntityImplementation"]());
                 return done();
@@ -61,7 +61,7 @@ describe('ccjson', function() {
 //return done();
         return CCJSON.then(function (CCJSON) {
             return CCJSON.parseFile(
-                PATH.join(__dirname, "assets/02-EntityMapping/config.ccjson")
+                PATH.join(__dirname, "02-EntityMapping/config.ccjson")
             ).then(function (config) {
                 config.prototype["@entities"]["entity"] = config.prototype["@entities"]["entity"].prototype;
 
@@ -85,7 +85,7 @@ describe('ccjson', function() {
 //return done();        
         return CCJSON.then(function (CCJSON) {
             return CCJSON.parseFile(
-                PATH.join(__dirname, "assets/03-EntityInstance/config.ccjson")
+                PATH.join(__dirname, "03-EntityInstance/config.ccjson")
             ).then(function (config) {
                 config.prototype["@entities"]["entity"] = config.prototype["@entities"]["entity"].prototype;
                 config.prototype["@instances"]["inst1"] = config.prototype["@instances"]["inst1"].toString();
@@ -126,7 +126,7 @@ describe('ccjson', function() {
 //return done();        
         return CCJSON.then(function (CCJSON) {
             return CCJSON.parseFile(
-                PATH.join(__dirname, "assets/04-ConfigInheritance/config.ccjson")
+                PATH.join(__dirname, "04-ConfigInheritance/config.ccjson")
             ).then(function (config) {
 
 //console.log("config", JSON.stringify(config.prototype, null, 4));
@@ -178,7 +178,7 @@ describe('ccjson', function() {
 //return done();        
         return CCJSON.then(function (CCJSON) {
             return CCJSON.parseFile(
-                PATH.join(__dirname, "assets/05-MultipleEntityMappingsAndInstances/config.ccjson")
+                PATH.join(__dirname, "05-MultipleEntityMappingsAndInstances/config.ccjson")
             ).then(function (config) {
                 config.prototype["@entities"]["entity"] = config.prototype["@entities"]["entity"].prototype;
                 config.prototype["@entities"]["entity.ours"] = config.prototype["@entities"]["entity.ours"].prototype;
@@ -240,7 +240,7 @@ describe('ccjson', function() {
 
         return CCJSON.then(function (CCJSON) {
             return CCJSON.parseFile(
-                PATH.join(__dirname, "assets/06-Variables/config.ccjson"),
+                PATH.join(__dirname, "06-Variables/config.ccjson"),
                 {
                     env: function (name) {
                         if (name === "MY_ENV_VAR") {
@@ -262,8 +262,8 @@ describe('ccjson', function() {
                     "@entities": {
                         "entity": EXPECTATIONS["01-EntityImplementation"]({
                             "config": {
-                                "ourBasePathInSubMappings": PATH.join(__dirname, "assets/06-Variables/sub"),
-                                "ourBasePathInMappings": PATH.join(__dirname, "assets/06-Variables")
+                                "ourBasePathInSubMappings": PATH.join(__dirname, "06-Variables/sub"),
+                                "ourBasePathInMappings": PATH.join(__dirname, "06-Variables")
                             }
                         })
                     },
@@ -271,10 +271,10 @@ describe('ccjson', function() {
                         "inst1": EXPECTATIONS["01-EntityImplementation"]({
                             "config": {
                                 "myvar": "my-env-var-value",
-                                "ourBasePathInSubMappings": PATH.join(__dirname, "assets/06-Variables/sub"),
-                                "ourBasePathInMappings": PATH.join(__dirname, "assets/06-Variables"),
-                                "ourBasePathInSubInstances": PATH.join(__dirname, "assets/06-Variables/sub"),
-                                "ourBasePathInInstances": PATH.join(__dirname, "assets/06-Variables/sub"),
+                                "ourBasePathInSubMappings": PATH.join(__dirname, "06-Variables/sub"),
+                                "ourBasePathInMappings": PATH.join(__dirname, "06-Variables"),
+                                "ourBasePathInSubInstances": PATH.join(__dirname, "06-Variables/sub"),
+                                "ourBasePathInInstances": PATH.join(__dirname, "06-Variables/sub"),
                                 "myvar": "sub:inst1:my-env-var-value",
                                 "myobj": {
                                     "mysubvar": "myobj:sub:inst1:my-env-var-value"
@@ -286,18 +286,18 @@ describe('ccjson', function() {
                         }),
                         "inst2": EXPECTATIONS["01-EntityImplementation"]({
                             "config": {
-                                "ourBasePathInSubMappings": PATH.join(__dirname, "assets/06-Variables/sub"),
-                                "ourBasePathInMappings": PATH.join(__dirname, "assets/06-Variables"),
-                                "ourBasePathInSubInstances": PATH.join(__dirname, "assets/06-Variables"),
-                                "ourBasePathInInstances": PATH.join(__dirname, "assets/06-Variables")
+                                "ourBasePathInSubMappings": PATH.join(__dirname, "06-Variables/sub"),
+                                "ourBasePathInMappings": PATH.join(__dirname, "06-Variables"),
+                                "ourBasePathInSubInstances": PATH.join(__dirname, "06-Variables"),
+                                "ourBasePathInInstances": PATH.join(__dirname, "06-Variables")
                             }
                         }),
                         "inst3": EXPECTATIONS["01-EntityImplementation"]({
                             "config": {
                                 "myvar": "my-env-var-value",
-                                "ourBasePathInSubMappings": PATH.join(__dirname, "assets/06-Variables"),
-                                "ourBasePathInMappings": PATH.join(__dirname, "assets/06-Variables"),
-                                "ourBasePathInInstances": PATH.join(__dirname, "assets/06-Variables"),
+                                "ourBasePathInSubMappings": PATH.join(__dirname, "06-Variables"),
+                                "ourBasePathInMappings": PATH.join(__dirname, "06-Variables"),
+                                "ourBasePathInInstances": PATH.join(__dirname, "06-Variables"),
                                 "myvar": "my-env-var-value",
                                 "myvarFromInst1": "value:sub:inst1:my-env-var-value:local:my-env-var-value",
                                 "myobjFromInst1": {
@@ -317,7 +317,7 @@ describe('ccjson', function() {
 //return done();
         return CCJSON.then(function (CCJSON) {
             return CCJSON.parseFile(
-                PATH.join(__dirname, "assets/07-InstanceAspects/config.ccjson")
+                PATH.join(__dirname, "07-InstanceAspects/config.ccjson")
             ).then(function (config) {
 
 //console.log("config", JSON.stringify(config.prototype, null, 4));
