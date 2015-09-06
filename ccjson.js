@@ -69,7 +69,7 @@ exports.forLib = function (LIB) {
     
                         var current = {
                             section: null,
-                            drain: null,
+                            drains: [],
                             drainCount: 0,
                             drained: false,
                             entityAlias: null,
@@ -77,198 +77,229 @@ exports.forLib = function (LIB) {
                         };
     
                         function nextToken (type, value) {
+                            
+                            try {
+
+                                var drainOnStart = null;
     
-                            if (current.drain) {
-    //console.log("  ... draining token", type, value);
+                                if (current.drains.length > 0) {
+                                    
+                                    drainOnStart = current.drains[current.drains.length-1][0];
+    console.log("  ... draining token", type, value, current.section);
+        
+                                    var m = null;
+                                    // 02-EntityMapping
+                                    if (
+                                        current.drainCount === 0 &&
+                                        type === "openobject" &&
+                                        typeof drainOnStart.onImplementation === "function" &&
+                                        value === "$"
+                                    ) {
+                                        current.captureImplementation = true
+                                    } else
+                                    if (
+                                        current.drainCount === 0 &&
+                                        type === "value" &&
+                                        typeof drainOnStart.onImplementation === "function" &&
+                                        current.captureImplementation === true
+                                    ) {
+                                        drainOnStart.onImplementation(
+                                            /^\//.test(value) ? value : LIB.path.join(path, "..", value)
+                                        );
+                                        current.captureImplementation = false;
+                                    } else
+                                    // 07-InstanceAspects
+                                    if (
+                                        current.section === "instance" &&
+                                        (value === "openobject" || type === "key") &&
+                                        (m = value.match(/^\$(.+)\(\)->(.+)$/))
+                                    ) {
+                                        current.section = "instance-aspect";
+                                        current.drains.push([
+                                            config.registerEntityInstanceAspectDeclaration(
+                                                drainOnStart.instanceAlias,
+                                                m[1],
+                                                m[2]
+                                            ),
+                                            current.drainCount
+                                        ]);
+                                        current.drains[current.drains.length-1][0].drain.once("end", function () {
+                                            current.section = "instance";
+                                        });
+                                    } else
     
-    
-                                // 02-EntityMapping
+                                    {
+                                        current.drainCount += 1;
+                                        drainOnStart.drain.emit(type, value);
+                                    }
+                                    return;
+                                }
+        
+    console.log("NEXT TOKEN", type, value);
+        
+                                if (current.drained) {
+                                    current.drained = false;
+        
+        //console.log(" .. DRAINED", current.section);
+                                    // 02-EntityMapping
+                                    if (
+                                        current.section === "mapping" &&
+                                        type === "closeobject"
+                                    ) {
+                                        current.section = null;
+                                        return;
+                                    } else
+                                    // 05-MultipleEntityMappingsAndInstances
+                                    if (
+                                        current.section === "mapping" &&
+                                        type === "key"
+                                    ) {
+                                        current.section = "mapping";
+                                    } else
+                                    // 03-EntityInstance
+                                    if (
+                                        current.section === "instance" &&
+                                        type === "key"
+                                    ) {
+                                        current.section = "entity";
+                                    } else
+                                    // 04-ConfigInheritance
+                                    if (
+                                        current.section === "instance" &&
+                                        type === "closeobject"
+                                    ) {
+                                        current.section = "entity";
+                                        return;
+                                    }
+                                }
+        
+        
+                                // 01-EntityImplementation
                                 if (
-                                    current.drainCount === 0 &&
+                                    current.section === null &&
                                     type === "openobject" &&
-                                    typeof current.drain.onImplementation === "function" &&
                                     value === "$"
                                 ) {
-                                    current.captureImplementation = true
+                                    current.section = "impl"
                                 } else
                                 if (
-                                    current.drainCount === 0 &&
-                                    type === "value" &&
-                                    typeof current.drain.onImplementation === "function" &&
-                                    current.captureImplementation === true
+                                    current.section === "impl" &&
+                                    type === "value"
                                 ) {
-                                    current.drain.onImplementation(
+                                    current.drains.push([config.registerEntityImplementation(
                                         /^\//.test(value) ? value : LIB.path.join(path, "..", value)
-                                    );
-                                    current.captureImplementation = false;
+                                    ), current.drainCount]);
                                 } else
-    
-                                {
-                                    current.drainCount += 1;
-                                    current.drain.drain.emit(type, value);
-                                }
-                                return ;
-                            }
-    
-    //console.log("NEXT TOKEN", type, value);
-    
-                            if (current.drained) {
-                                current.drained = false;
-    
-    //console.log(" .. DRAINED", current.section);
+                                
                                 // 02-EntityMapping
                                 if (
-                                    current.section === "mapping" &&
-                                    type === "closeobject"
+                                    current.section === null &&
+                                    type === "openobject" &&
+                                    value === "@"
                                 ) {
-                                    current.section = null;
-                                    return;
+                                    current.section = "config"
                                 } else
-                                // 05-MultipleEntityMappingsAndInstances
                                 if (
-                                    current.section === "mapping" &&
-                                    type === "key"
+                                    current.section === "config" &&
+                                    type === "openobject" &&
+                                    value !== "$"
                                 ) {
+                                    current.drains.push([config.registerEntityMappingDeclaration(value), current.drainCount]);
                                     current.section = "mapping";
                                 } else
+        
                                 // 03-EntityInstance
                                 if (
-                                    current.section === "instance" &&
-                                    type === "key"
+                                    (
+                                        current.section === null ||
+                                        current.section === "entity"
+                                    ) &&
+                                    type === "key" &&
+                                    /^@/.test(value)
                                 ) {
                                     current.section = "entity";
+                                    current.entityAlias = value.substring(1);
                                 } else
+                                if (
+                                    current.section === "entity" &&
+                                    current.entityAlias !== null &&
+                                    (type === "openobject" || type === "key") &&
+                                    /^\$/.test(value)
+                                ) {
+                                    current.section = "instance";
+                                    current.drains.push([config.registerEntityInstanceDeclaration(
+                                        current.entityAlias,
+                                        value.substring(1)
+                                    ), current.drainCount]);
+                                } else
+                                
                                 // 04-ConfigInheritance
                                 if (
-                                    current.section === "instance" &&
+                                    current.section === "config" &&
+                                    type === "openobject" &&
+                                    value === "$"
+                                ) {
+                                    current.section = "inherit";
+                                } else
+                                if (
+                                    current.section === "inherit" &&
+                                    type === "openarray"
+                                ) {
+                                    // Ignore
+                                } else
+                                if (
+                                    current.section === "inherit" &&
+                                    type === "value"
+                                ) {
+                                    config.registerInheritedEntityImplementation(
+                                        /^\//.test(value) ? value : LIB.path.join(path, "..", value)
+                                    );
+                                } else
+                                if (
+                                    current.section === "inherit" &&
+                                    type === "closearray"
+                                ) {
+                                    current.section = "config";
+                                } else
+                                if (
+                                    (
+                                        current.section === "config" ||
+                                        current.section === "mapping"
+                                    ) &&
+                                    type === "key"
+                                ) {
+                                    current.drains.push([config.registerEntityMappingDeclaration(value), current.drainCount]);
+                                    current.section = "mapping";
+                                } else
+                                if (
+                                    current.section === "entity" &&
                                     type === "closeobject"
                                 ) {
-                                    current.section = "entity";
-                                    return;
+                                    current.section = "config";
+                                } else
+                                
+                                
+                                {
+        
+    console.log("  **** UNHANDLED TOKEN", type, value, current.section);
                                 }
-                            }
-    
-    
-                            // 01-EntityImplementation
-                            if (
-                                current.section === null &&
-                                type === "openobject" &&
-                                value === "$"
-                            ) {
-                                current.section = "impl"
-                            } else
-                            if (
-                                current.section === "impl" &&
-                                type === "value"
-                            ) {
-                                current.drain = config.registerEntityImplementation(
-                                    /^\//.test(value) ? value : LIB.path.join(path, "..", value)
-                                );
-                            } else
-                            
-                            // 02-EntityMapping
-                            if (
-                                current.section === null &&
-                                type === "openobject" &&
-                                value === "@"
-                            ) {
-                                current.section = "config"
-                            } else
-                            if (
-                                current.section === "config" &&
-                                type === "openobject" &&
-                                value !== "$"
-                            ) {
-                                current.drain = config.registerEntityMappingDeclaration(value);
-                                current.section = "mapping";
-                            } else
-    
-                            // 03-EntityInstance
-                            if (
-                                (
-                                    current.section === null ||
-                                    current.section === "entity"
-                                ) &&
-                                type === "key" &&
-                                /^@/.test(value)
-                            ) {
-                                current.section = "entity";
-                                current.entityAlias = value.substring(1);
-                            } else
-                            if (
-                                current.section === "entity" &&
-                                current.entityAlias !== null &&
-                                (type === "openobject" || type === "key") &&
-                                /^\$/.test(value)
-                            ) {
-                                current.section = "instance";
-                                current.drain = config.registerEntityInstanceDeclaration(
-                                    current.entityAlias,
-                                    value.substring(1)
-                                );
-    //                            current.drain.drain.activeEntityInstance.emit("key", key);
-                            } else
-                            
-                            // 04-ConfigInheritance
-                            if (
-                                current.section === "config" &&
-                                type === "openobject" &&
-                                value === "$"
-                            ) {
-                                current.section = "inherit";
-                            } else
-                            if (
-                                current.section === "inherit" &&
-                                type === "openarray"
-                            ) {
-                                // Ignore
-                            } else
-                            if (
-                                current.section === "inherit" &&
-                                type === "value"
-                            ) {
-                                config.registerInheritedEntityImplementation(
-                                    /^\//.test(value) ? value : LIB.path.join(path, "..", value)
-                                );
-                            } else
-                            if (
-                                current.section === "inherit" &&
-                                type === "closearray"
-                            ) {
-                                current.section = "config";
-                            } else
-                            if (
-                                (
-                                    current.section === "config" ||
-                                    current.section === "mapping"
-                                ) &&
-                                type === "key"
-                            ) {
-                                current.drain = config.registerEntityMappingDeclaration(value);
-                                current.section = "mapping";
-                            } else
-                            if (
-                                current.section === "entity" &&
-                                type === "closeobject"
-                            ) {
-                                current.section = "config";
-                            } else
-                            
-                            
-                            {
-    
-    //console.log("  **** UNHANDLED TOKEN", type, value, current.section);
-                            }
-    
-                            // A new drain was registered so we ensure it unhooks itself when done.
-                            // TODO: We should terminate drain instead of letting it do it itself?
-                            if (current.drain) {
-                                current.drain.drain.once("end", function () {
-                                    // Is set for the next token only so we can cleanup
-                                    current.drained = true;
-                                    current.drain = null;
-                                    current.drainCount = 0;
-                                });
+        
+                                // A new drain was registered so we ensure it unhooks itself when done.
+                                // TODO: We should terminate drain instead of letting it do it itself?
+                                if (current.drains.length > 0) {
+                                    var drain = current.drains[current.drains.length-1];
+                                    if (drain !== drainOnStart) {
+                                        drain[0].drain.once("end", function () {
+                                            // Is set for the next token only so we can cleanup
+                                            current.drained = true;
+                                            // Removes ended drain and recovers drain count for previous drain
+                                            current.drainCount = current.drains.pop()[1];
+                                        });
+                                    }
+                                }
+                            } catch (err) {
+                                console.error(err.stack);
+                                throw err;
                             }
                         }
     
@@ -363,8 +394,6 @@ exports.forLib = function (LIB) {
                 } else {
                     currentKey = key;
 //                    currentPointer = currentPointer[key] = {};
-
-
 //                    console.error("currentKey", currentKey);
 //                    console.error("currentPointer", currentPointer);
 //                    throw new Error("Don't know how to attach object '" + key + "'");
@@ -391,7 +420,6 @@ exports.forLib = function (LIB) {
                 currentPointer = pointerHistory.pop();
             });
             
-
 
             self.assemble = function (overrides) {
                 overrides = overrides || [];
@@ -466,10 +494,25 @@ exports.forLib = function (LIB) {
                     _type: "entity-instance",
                     assembler: new ConfigObjectAssembler(),
                     entityAlias: entityAlias,
+                    aspects: {},
                     overrides: []
                 };
                 return {
+                    instanceAlias: instanceAlias,
                     drain: entity.instances[instanceAlias].assembler
+                };
+            }
+
+            self.registerEntityInstanceAspectDeclaration = function (instanceAlias, aspectInstanceAlias, mountPath) {
+                entity.instances[instanceAlias].aspects[aspectInstanceAlias + ":" + mountPath] = {
+                    _type: "entity-instance-aspect",
+                    assembler: new ConfigObjectAssembler(),
+                    aspectInstanceAlias: aspectInstanceAlias,
+                    mountPath: mountPath,
+                    overrides: []
+                };
+                return {
+                    drain: entity.instances[instanceAlias].aspects[aspectInstanceAlias + ":" + mountPath].assembler
                 };
             }
 
@@ -547,7 +590,6 @@ exports.forLib = function (LIB) {
 
 //console.log("FOR COINFIUG", defaultConfig);
 //throw new Error("FALSE");
-
                                 return exports.forConfig(defaultConfig);
                             });
                         });
@@ -579,8 +621,7 @@ exports.forLib = function (LIB) {
                                 });
                                 return impl;
                             }
-                            
-                            
+
                             var impl = getImpl();
                             if (impl) {
                                 return impl.then(function (config) {

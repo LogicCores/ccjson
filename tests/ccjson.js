@@ -302,4 +302,61 @@ describe('ccjson', function() {
         }).catch(done);
     });
 
+
+    it('07-InstanceAspects', function (done) {
+return done();
+        return CCJSON.then(function (CCJSON) {
+            return CCJSON.parseFile(
+                PATH.join(__dirname, "assets/07-InstanceAspects/config.ccjson")
+            ).then(function (config) {
+
+console.log("config", JSON.stringify(config.prototype, null, 4));
+
+                config.prototype["@entities"]["profile.impl"] = config.prototype["@entities"]["profile.impl"].prototype;
+                config.prototype["@entities"]["auth.impl"] = config.prototype["@entities"]["auth.impl"].prototype;
+                config.prototype["@instances"]["profile"] = config.prototype["@instances"]["profile"].toString();
+                config.prototype["@instances"]["auth"] = config.prototype["@instances"]["auth"].toString();
+
+console.log("config", JSON.stringify(config.prototype, null, 4));
+
+                ASSERT.deepEqual(config.prototype, {
+                    "@entities": {
+                        "profile.impl": {
+                            "_entity": "07-InstanceAspects/profile",
+                            "config": {
+                                "secret": "SecretValue"
+                            }
+                        },
+                        "auth.impl": {
+                            "_entity": "07-InstanceAspects/auth",
+                            "config": {
+                                "$profile.decrypt()": {
+                                    "someVariable": "(EncryptedUsingSecretValue)Value"
+                                }
+                            }
+                        }
+                    },
+                    "@instances": {
+                        "profile": {
+                            "_entity": "07-InstanceAspects/profile",
+                            "config": {
+                                "secret": "SecretValue"
+                            }
+                        },
+                        "auth": {
+                            "_entity": "07-InstanceAspects/auth",
+                            "config": {
+                                "$profile.decrypt()": {
+                                    "someVariable": "(EncryptedUsingSecretValue)Value"
+                                }
+                            }
+                        }
+                    }
+                });
+
+                return done();
+            });
+        }).catch(done);
+    });
+
 });
