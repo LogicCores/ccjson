@@ -44,7 +44,6 @@ describe('ccjson', function() {
         }
     };
 
-
     it('01-EntityImplementation', function (done) {
 //return done();        
         return CCJSON.then(function (CCJSON) {
@@ -187,6 +186,8 @@ describe('ccjson', function() {
                 config.prototype["@instances"]["inst.EO.a"] = config.prototype["@instances"]["inst.EO.a"].toString();
                 config.prototype["@instances"]["inst.EO.b"] = config.prototype["@instances"]["inst.EO.b"].toString();
 
+//console.log("config", JSON.stringify(config.prototype, null, 4));
+
                 ASSERT.deepEqual(config.prototype, {
                     "@entities": {
                         "entity": EXPECTATIONS["01-EntityImplementation"]({
@@ -197,8 +198,7 @@ describe('ccjson', function() {
                         "entity.ours": {
                             "_entity": "05-MultipleEntityMappingsAndInstances/entity",
                             "config": {
-                                "ourDefault": "Val",
-                                "foo": "bar3"
+                                "ourDefault": "Val"
                             }
                         }
                     },
@@ -217,8 +217,7 @@ describe('ccjson', function() {
                         "inst.EO.a": {
                             "_entity": "05-MultipleEntityMappingsAndInstances/entity",
                             "config": {
-                                "ourDefault": "Val",
-                                "foo": "bar3"
+                                "ourDefault": "Val"
                             }
                         },
                         "inst.EO.b": {
@@ -234,7 +233,6 @@ describe('ccjson', function() {
             });
         }).catch(done);
     });
-
 
     it('06-Variables', function (done) {
 //return done();
@@ -302,37 +300,32 @@ describe('ccjson', function() {
         }).catch(done);
     });
 
-
     it('07-InstanceAspects', function (done) {
-return done();
+//return done();
         return CCJSON.then(function (CCJSON) {
             return CCJSON.parseFile(
                 PATH.join(__dirname, "assets/07-InstanceAspects/config.ccjson")
             ).then(function (config) {
 
-console.log("config", JSON.stringify(config.prototype, null, 4));
+//console.log("config", JSON.stringify(config.prototype, null, 4));
 
                 config.prototype["@entities"]["profile.impl"] = config.prototype["@entities"]["profile.impl"].prototype;
                 config.prototype["@entities"]["auth.impl"] = config.prototype["@entities"]["auth.impl"].prototype;
                 config.prototype["@instances"]["profile"] = config.prototype["@instances"]["profile"].toString();
                 config.prototype["@instances"]["auth"] = config.prototype["@instances"]["auth"].toString();
 
-console.log("config", JSON.stringify(config.prototype, null, 4));
+//console.log("config", JSON.stringify(config.prototype, null, 4));
 
                 ASSERT.deepEqual(config.prototype, {
                     "@entities": {
                         "profile.impl": {
                             "_entity": "07-InstanceAspects/profile",
                             "config": {
-                                "secret": "SecretValue"
                             }
                         },
                         "auth.impl": {
                             "_entity": "07-InstanceAspects/auth",
                             "config": {
-                                "$profile.decrypt()": {
-                                    "someVariable": "(EncryptedUsingSecretValue)Value"
-                                }
                             }
                         }
                     },
@@ -346,8 +339,17 @@ console.log("config", JSON.stringify(config.prototype, null, 4));
                         "auth": {
                             "_entity": "07-InstanceAspects/auth",
                             "config": {
-                                "$profile.decrypt()": {
-                                    "someVariable": "(EncryptedUsingSecretValue)Value"
+                                "set1": {
+                                    "someVariable": "(EncryptedUsingSecretValue)Value",
+                                    "someVariableA": "OurOverrideValueA",
+                                    "someVariableB": "OurValueB"
+                                },
+                                "set2": {
+                                    "someVariableC": "OurValueC",
+                                    "sub": {
+                                        "someVariableD": "OurValueD",
+                                        "someVariable2": "(EncryptedUsingSecretValue)Value2"
+                                    }
                                 }
                             }
                         }

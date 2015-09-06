@@ -81,12 +81,14 @@ exports.forLib = function (LIB) {
                             try {
 
                                 var drainOnStart = null;
-    
+
+//console.log("current.drains.length", current.drains.length);    
                                 if (current.drains.length > 0) {
                                     
                                     drainOnStart = current.drains[current.drains.length-1][0];
-    console.log("  ... draining token", type, value, current.section);
-        
+
+//    console.log("  ... draining token", type, value, current.section);
+//console.log("drainOnStart", drainOnStart);        
                                     var m = null;
                                     // 02-EntityMapping
                                     if (
@@ -111,8 +113,8 @@ exports.forLib = function (LIB) {
                                     // 07-InstanceAspects
                                     if (
                                         current.section === "instance" &&
-                                        (value === "openobject" || type === "key") &&
-                                        (m = value.match(/^\$(.+)\(\)->(.+)$/))
+                                        (type === "openobject" || type === "key") &&
+                                        value && (m = value.match(/^\$(.+)\(\)->(.+)$/))
                                     ) {
                                         current.section = "instance-aspect";
                                         current.drains.push([
@@ -123,19 +125,21 @@ exports.forLib = function (LIB) {
                                             ),
                                             current.drainCount
                                         ]);
-                                        current.drains[current.drains.length-1][0].drain.once("end", function () {
+                                        current.drains[current.drains.length-1][0].drain.assembler.once("end", function () {
                                             current.section = "instance";
+                                            current.drainCount = 0;
+                                            current.drains.pop();
                                         });
                                     } else
     
                                     {
                                         current.drainCount += 1;
-                                        drainOnStart.drain.emit(type, value);
+                                        drainOnStart.drain.assembler.emit(type, value);
                                     }
                                     return;
                                 }
         
-    console.log("NEXT TOKEN", type, value);
+//    console.log("NEXT TOKEN", type, value);
         
                                 if (current.drained) {
                                     current.drained = false;
@@ -172,8 +176,8 @@ exports.forLib = function (LIB) {
                                         return;
                                     }
                                 }
-        
-        
+
+
                                 // 01-EntityImplementation
                                 if (
                                     current.section === null &&
@@ -281,7 +285,7 @@ exports.forLib = function (LIB) {
                                 
                                 {
         
-    console.log("  **** UNHANDLED TOKEN", type, value, current.section);
+//    console.log("  **** UNHANDLED TOKEN", type, value, current.section);
                                 }
         
                                 // A new drain was registered so we ensure it unhooks itself when done.
@@ -289,7 +293,7 @@ exports.forLib = function (LIB) {
                                 if (current.drains.length > 0) {
                                     var drain = current.drains[current.drains.length-1];
                                     if (drain !== drainOnStart) {
-                                        drain[0].drain.once("end", function () {
+                                        drain[0].drain.assembler.once("end", function () {
                                             // Is set for the next token only so we can cleanup
                                             current.drained = true;
                                             // Removes ended drain and recovers drain count for previous drain
@@ -423,14 +427,22 @@ exports.forLib = function (LIB) {
 
             self.assemble = function (overrides) {
                 overrides = overrides || [];
+
+//console.log("ASSEMBLE overrides", overrides);
+
                 var mergedConfig = {};
                 return LIB.Promise.all(overrides.map(function (override) {
-                    return override.assemble().then(function (config) {
-                        // TODO: Implement merging that respects promises.
-                        LIB._.merge(
-                            mergedConfig,
-                            LIB._.cloneDeep(config)
-                        );
+//console.log("override", override);                    
+                    return override.assembler.assemble().then(function (config) {
+
+                        if (override.mountPath) {
+                            throw new Error("'mountPath' not supported here! Use a merger at the entity instance level!");
+                        } else {
+                            LIB._.merge(
+                                mergedConfig,
+                                LIB._.cloneDeep(config)
+                            );
+                        }
                     });
                 })).then(function () {
                     LIB._.merge(
@@ -464,7 +476,8 @@ exports.forLib = function (LIB) {
                     })
                 };
                 return {
-                    drain: entity.implementation.assembler
+                    _type: "entity-implementation",
+                    drain: entity.implementation
                 };
             }
 
@@ -482,37 +495,110 @@ exports.forLib = function (LIB) {
                     overrides: []
                 };
                 return {
+                    _type: "entity-mapping",
                     onImplementation: function (path) {
                         entity.mappings[alias].impl = parseFile(path, parseOptions);
                     },
-                    drain: entity.mappings[alias].assembler
+                    drain: entity.mappings[alias]
                 };
             }
 
             self.registerEntityInstanceDeclaration = function (entityAlias, instanceAlias) {
+
+                var drain = {
+                    _type: "entity-instance-config",
+                    assembler: new ConfigObjectAssembler()
+                };
                 entity.instances[instanceAlias] = {
                     _type: "entity-instance",
-                    assembler: new ConfigObjectAssembler(),
+                    mergeLayers: function () {
+
+                        function gatherLayers (entity) {
+                            var layers = [];
+
+                            entity.overrides.forEach(function (override) {
+                                if (override.configLayers) {
+                                    layers = layers.concat(gatherLayers(override));
+                                }
+                                if (override.assembler) {
+                                    layers.push({
+                                        assembler: override.assembler
+                                    });
+                                }
+                            });
+
+                            layers = layers.concat(entity.configLayers.map(function (layer) {
+                                return {
+                                    mountPath: layer.mountPath || null,
+                                    assembler: layer.assembler
+                                };
+                            }));
+
+                            return layers;
+                        }
+                        var layers = gatherLayers(entity.instances[instanceAlias]);
+                        var mergedConfig = {};
+
+                        return LIB.Promise.all(layers.map(function (layer) {
+
+                            return layer.assembler.assemble().then(function (config) {
+
+                                if (layer.mountPath) {
+                                    var mountPathParts = layer.mountPath.split("/");
+                                    var mountNode = mergedConfig;
+                                    var key = null;
+                                    while ( (key = mountPathParts.shift()) ) {
+                                        if (!mountNode[key]) {
+                                            mountNode[key] = {};
+                                        }
+                                        mountNode = mountNode[key];
+                                    }
+                                    LIB._.merge(
+                                        mountNode,
+                                        LIB._.cloneDeep(config)
+                                    );
+                                } else {
+                                    LIB._.merge(
+                                        mergedConfig,
+                                        LIB._.cloneDeep(config)
+                                    );
+                                }
+                            });
+                        })).then(function () {
+                            return mergedConfig;
+                        });
+                    },
+                    configLayers: [
+                        LIB._.clone(drain)
+                    ],
+                    drain: drain,
                     entityAlias: entityAlias,
-                    aspects: {},
                     overrides: []
                 };
                 return {
+                    _type: "entity-instance",
                     instanceAlias: instanceAlias,
-                    drain: entity.instances[instanceAlias].assembler
+                    drain: drain
                 };
             }
 
             self.registerEntityInstanceAspectDeclaration = function (instanceAlias, aspectInstanceAlias, mountPath) {
-                entity.instances[instanceAlias].aspects[aspectInstanceAlias + ":" + mountPath] = {
+                var drain = {
                     _type: "entity-instance-aspect",
                     assembler: new ConfigObjectAssembler(),
                     aspectInstanceAlias: aspectInstanceAlias,
-                    mountPath: mountPath,
-                    overrides: []
+                    mountPath: mountPath
                 };
+                entity.instances[instanceAlias].configLayers.push(drain);
+                drain.assembler.once("end", function () {
+                    entity.instances[instanceAlias].drain.assembler = new ConfigObjectAssembler();
+                    entity.instances[instanceAlias].configLayers.push(
+                        LIB._.clone(entity.instances[instanceAlias].drain)
+                    );
+                });
                 return {
-                    drain: entity.instances[instanceAlias].aspects[aspectInstanceAlias + ":" + mountPath].assembler
+                    _type: "entity-instance-aspect",
+                    drain: drain
                 };
             }
 
@@ -603,7 +689,9 @@ exports.forLib = function (LIB) {
 
                         return entity.mappings[alias].assembler.assemble(
                             entity.mappings[alias].overrides.map(function (override) {
-                                return override.assembler;
+                                return {
+                                    assembler: override.assembler
+                                };
                             })
                         ).then(function (configOverrides) {
 
@@ -645,11 +733,7 @@ exports.forLib = function (LIB) {
 
                     return LIB.Promise.all(Object.keys(entity.instances).map(function (alias) {
 
-                        return entity.instances[alias].assembler.assemble(
-                            entity.instances[alias].overrides.map(function (override) {
-                                return override.assembler;
-                            })
-                        ).then(function (configOverrides) {
+                        return entity.instances[alias].mergeLayers().then(function (configOverrides) {
 
                             var entityClass = mappings[entity.instances[alias].entityAlias];
                             if (!entityClass) {
