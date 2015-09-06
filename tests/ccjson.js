@@ -340,7 +340,7 @@ describe('ccjson', function() {
                             "_entity": "07-InstanceAspects/auth",
                             "config": {
                                 "set1": {
-                                    "someVariable": "(EncryptedUsingSecretValue)Value",
+                                    "someVariable": "Value",
                                     "someVariableA": "OurOverrideValueA",
                                     "someVariableB": "OurValueB"
                                 },
@@ -348,7 +348,7 @@ describe('ccjson', function() {
                                     "someVariableC": "OurValueC",
                                     "sub": {
                                         "someVariableD": "OurValueD",
-                                        "someVariable2": "(EncryptedUsingSecretValue)Value2"
+                                        "someVariable2": "Value2"
                                     }
                                 }
                             }

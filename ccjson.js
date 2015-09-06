@@ -511,7 +511,7 @@ exports.forLib = function (LIB) {
                 };
                 entity.instances[instanceAlias] = {
                     _type: "entity-instance",
-                    mergeLayers: function () {
+                    mergeLayers: function (getEntityInstance) {
 
                         function gatherLayers (entity) {
                             var layers = [];
@@ -529,6 +529,7 @@ exports.forLib = function (LIB) {
 
                             layers = layers.concat(entity.configLayers.map(function (layer) {
                                 return {
+                                    aspectInstanceAlias: layer.aspectInstanceAlias || null,
                                     mountPath: layer.mountPath || null,
                                     assembler: layer.assembler
                                 };
@@ -562,6 +563,33 @@ exports.forLib = function (LIB) {
                                         mergedConfig,
                                         LIB._.cloneDeep(config)
                                     );
+                                }
+
+                                // Now that config is merged init the instance aspect if applicable
+                                // and merge the resulting config.
+                                if (layer.aspectInstanceAlias) {
+                                    var instanceAliasParts = layer.aspectInstanceAlias.split(".");
+                                    var instanceAspectMethod = instanceAliasParts.pop();
+                                    var instanceAspectAlias = instanceAliasParts.join(".");
+                                    if (!entity.instances[instanceAspectAlias]) {
+                                        throw new Error("No declared instance found for aspect alias '" + instanceAspectAlias + "' while resolving aspect instance for entity '" + entityAlias + "' instance '" + instanceAlias + "'");
+                                    }
+
+                                    return getEntityInstance(instanceAspectAlias).then(function (instance) {
+                                        if (typeof instance.AspectInstance === "function") {
+                                            try {
+                                                return instance.AspectInstance(mergedConfig).then(function (config) {
+                                                    LIB._.merge(
+                                                        mergedConfig,
+                                                        LIB._.cloneDeep(config)
+                                                    );
+                                                });
+                                            } catch (err) {
+                                                console.error("Error while running AspectInstance for '" + instanceAspectAlias +"' while resolving aspect instance for entity '" + entityAlias + "' instance '" + instanceAlias + "'", err.stack);
+                                                throw err;
+                                            }
+                                        }
+                                    });
                                 }
                             });
                         })).then(function () {
@@ -731,9 +759,18 @@ exports.forLib = function (LIB) {
                 function instanciateEntityInstances (mappings) {
                     var instances = {};
 
+                    var instancePromises = {};
+
                     return LIB.Promise.all(Object.keys(entity.instances).map(function (alias) {
 
-                        return entity.instances[alias].mergeLayers().then(function (configOverrides) {
+                        var getEntityInstance = function (instanceAlias) {
+                            if (!instancePromises[instanceAlias]) {
+                                throw new Error("Instance for alias '" + instanceAlias + "' not yet registered. You must declare it before using it as an instance aspect!");
+                            }
+                            return instancePromises[instanceAlias];
+                        }
+
+                        return instancePromises[alias] = entity.instances[alias].mergeLayers(getEntityInstance).then(function (configOverrides) {
 
                             var entityClass = mappings[entity.instances[alias].entityAlias];
                             if (!entityClass) {
@@ -748,7 +785,7 @@ exports.forLib = function (LIB) {
                             instances[instanceAlias] = instance;
 */
 
-                            instances[alias] = new entityClass(configOverrides);
+                            return (instances[alias] = new entityClass(configOverrides));
                         });
                     })).then(function () {
                         return instances;
