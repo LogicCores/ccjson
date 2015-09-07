@@ -25,11 +25,14 @@ exports.forLib = function (LIB) {
                     LIB._.merge(obj, LIB._.cloneDeep(self.__proto__.config));
                     LIB._.merge(obj, LIB._.cloneDeep(instanceConfig));
 
-                    var json = LIB.CJSON.stringify(aspectConfig);
-                    json = json.replace(new RegExp("\\(EncryptedUsing" + obj.secret + "\\)", "g"), "");
-                    aspectConfig = JSON.parse(json);
-
-                    return LIB.Promise.resolve(aspectConfig);
+                    return LIB.Promise.resolve({
+                        decrypt: function () {
+                            var json = LIB.CJSON.stringify(aspectConfig);
+                            json = json.replace(new RegExp("\\(EncryptedUsing" + obj.secret + "\\)", "g"), "");
+                            aspectConfig = JSON.parse(json);
+                            return LIB.Promise.resolve(aspectConfig);
+                        }
+                    });
                 }
             }
             Entity.prototype._entity = "07-InstanceAspects/profile";

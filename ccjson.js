@@ -701,18 +701,24 @@ exports.forLib = function (LIB) {
                                         }
     
                                         return getEntityInstance(instanceAspectAlias).then(function (instance) {
-                                            if (typeof instance.AspectInstance === "function") {
-                                                try {
-                                                    return instance.AspectInstance(mergedConfig).then(function (config) {
+                                            if (typeof instance.AspectInstance !== "function") {
+                                                throw new Error("Aspect instance for '" + instanceAspectAlias + "' cannot me instanciated as entity does not implement 'AspectInstance' factory method");
+                                            }
+                                            try {
+                                                return instance.AspectInstance(mergedConfig).then(function (aspectInstance) {
+                                                    if (typeof aspectInstance[instanceAspectMethod] !== "function") {
+                                                        throw new Error("Aspect instance for '" + instanceAspectAlias + "' does not implement method '" + instanceAspectMethod + "'");
+                                                    }
+                                                    return aspectInstance[instanceAspectMethod]().then(function (config) {
                                                         LIB._.merge(
                                                             mergedConfig,
                                                             LIB._.cloneDeep(config)
                                                         );
                                                     });
-                                                } catch (err) {
-                                                    console.error("Error while running AspectInstance for '" + instanceAspectAlias +"' while resolving aspect instance for entity '" + entityAlias + "' instance '" + instanceAlias + "'", err.stack);
-                                                    throw err;
-                                                }
+                                                });
+                                            } catch (err) {
+                                                console.error("Error while running AspectInstance for '" + instanceAspectAlias +"' while resolving aspect instance for entity '" + entityAlias + "' instance '" + instanceAlias + "'", err.stack);
+                                                throw err;
                                             }
                                         });
                                     }
