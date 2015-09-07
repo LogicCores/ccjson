@@ -3,7 +3,7 @@ ccjson
 
 ## Canonical Contractual JSON
 
-> Ordered JSON unlocks a world of possibilities!
+> Ordered & animated JSON unlocks a world of possibilities!
 
 `ccsjon` is a *sax-style* parser and ordered resolver for JSON that adds a thin layer of *entities*, *inheritance* and *relationships* animated by declared JavaScript module implementations.
 
