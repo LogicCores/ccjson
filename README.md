@@ -31,4 +31,4 @@ Test
 Provenance
 ==========
 
-Original source logic [UNLICENSED](http://unlicense.org/) by [Christoph Dorn](http://christophdorn.com).
+Original source logic [UNLICENSED](http://unlicense.org/) by [Christoph Dorn](http://christophdorn.com)
