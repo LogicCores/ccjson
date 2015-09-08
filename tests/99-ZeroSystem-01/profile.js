@@ -38,7 +38,7 @@ exports.forLib = function (LIB) {
                     });
                 }
             }
-            Entity.prototype._entity = "07-InstanceAspects/profile";
+            Entity.prototype._entity = "99-ZeroSystem-01/profile";
             Entity.prototype.config = defaultConfig;
 
             return Entity;

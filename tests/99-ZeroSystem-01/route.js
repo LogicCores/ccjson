@@ -2,8 +2,6 @@
 exports.forLib = function (LIB) {
     var ccjson = this;
 
-    const ASSERT = require("assert");
-
     return LIB.Promise.resolve({
         forConfig: function (defaultConfig) {
 
@@ -18,15 +16,8 @@ exports.forLib = function (LIB) {
                     }));
                     return obj;
                 }
-                
-                var config = {};
-                LIB._.merge(config, defaultConfig)
-                LIB._.merge(config, instanceConfig)
-                config = ccjson.attachDetachedFunctions(config);
-
-                ASSERT.equal(config.decrypter("value"), "decrypted:value");
             }
-            Entity.prototype._entity = "99-ZeroSystem-01/auth";
+            Entity.prototype._entity = "99-ZeroSystem-01/route";
             Entity.prototype.config = defaultConfig;
 
             return Entity;

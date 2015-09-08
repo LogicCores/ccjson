@@ -403,12 +403,12 @@ describe('ccjson', function() {
             ASSERT.deepEqual(config.prototype, {
                 "@entities": {
                     "profile.impl": {
-                        "_entity": "07-InstanceAspects/profile",
+                        "_entity": "08-InstanceAspectFunctions/profile",
                         "config": {
                         }
                     },
                     "auth.impl": {
-                        "_entity": "07-InstanceAspects/auth",
+                        "_entity": "08-InstanceAspectFunctions/auth",
                         "config": {
                         }
                     }
@@ -456,33 +456,54 @@ describe('ccjson', function() {
             delete config.prototype.getInstance;
             config.prototype["@entities"]["profile.impl"] = config.prototype["@entities"]["profile.impl"].prototype;
             config.prototype["@entities"]["auth.impl"] = config.prototype["@entities"]["auth.impl"].prototype;
+            config.prototype["@entities"]["route.express"] = config.prototype["@entities"]["route.express"].prototype;
             config.prototype["@instances"]["profile"] = config.prototype["@instances"]["profile"].toString();
             config.prototype["@instances"]["auth"] = config.prototype["@instances"]["auth"].toString();
+            config.prototype["@instances"]["0.routes.auth.passport"] = config.prototype["@instances"]["0.routes.auth.passport"].toString();
+            config.prototype["@instances"]["0.routes.proxy.smi.cache.org.travis-ci"] = config.prototype["@instances"]["0.routes.proxy.smi.cache.org.travis-ci"].toString();
 
 //console.log("config", JSON.stringify(config.prototype, null, 4));
 
             ASSERT.deepEqual(config.prototype, {
                 "@entities": {
                     "profile.impl": {
-                        "_entity": "07-InstanceAspects/profile",
+                        "_entity": "99-ZeroSystem-01/profile",
                         "config": {
                         }
                     },
                     "auth.impl": {
-                        "_entity": "07-InstanceAspects/auth",
+                        "_entity": "99-ZeroSystem-01/auth",
                         "config": {
                         }
+                    },
+                    "route.express": {
+                        "_entity": "99-ZeroSystem-01/route",
+                        "config": {}
                     }
                 },
                 "@instances": {
                     "profile": {
-                        "_entity": "07-InstanceAspects/profile",
+                        "_entity": "99-ZeroSystem-01/profile",
                         "config": {
                             "secret": "SecretValue"
                         }
                     },
+                    "0.routes.auth.passport": {
+                        "_entity": "99-ZeroSystem-01/route",
+                        "config": {
+                            "namespace": "0",
+                            "decrypter": "&func&f:1"
+                        }
+                    },
+                    "0.routes.proxy.smi.cache.org.travis-ci": {
+                        "_entity": "99-ZeroSystem-01/route",
+                        "config": {
+                            "namespace": "0",
+                            "decrypter": "&func&f:2"
+                        }
+                    },
                     "auth": {
-                        "_entity": "07-InstanceAspects/auth",
+                        "_entity": "99-ZeroSystem-01/auth",
                         "config": {
                             "set1": {
                                 "someVariable": "Value",
@@ -497,7 +518,7 @@ describe('ccjson', function() {
                                 }
                             },
                             "someVariable3": "Value3",
-                            "decrypter": "&func&f:1"
+                            "decrypter": "&func&f:3"
                         }
                     }
                 }

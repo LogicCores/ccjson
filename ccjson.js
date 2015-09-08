@@ -119,7 +119,8 @@ exports.forLib = function (LIB) {
                                         
                                         drainOnStart = current.drains[current.drains.length-1][0];
         
-        //    console.log("  ... draining token", type, value, current.section);
+//console.log("  ... draining token", type, value, current.section);
+
         //console.log("drainOnStart", drainOnStart);        
                                         var m = null;
                                         // 02-EntityMapping
@@ -163,20 +164,29 @@ exports.forLib = function (LIB) {
                                                 current.drains.pop();
                                             });
                                         } else
-        
+                                        if (
+                                            current.drainCount === 0 &&
+                                            current.section === "instance" &&
+                                            type === "closeobject"
+                                        ) {
+                                            current.section = "entity";
+                                            current.drainCount = current.drains.pop()[1];
+                                        } else
+
                                         {
+//console.log("drain sub", current);                                            
                                             current.drainCount += 1;
                                             drainOnStart.drain.assembler.emit(type, value, valueMeta);
                                         }
                                         return;
                                     }
             
-        //    console.log("NEXT TOKEN", type, value);
+//console.log("NEXT TOKEN", type, value, current.section);
             
                                     if (current.drained) {
                                         current.drained = false;
             
-            //console.log(" .. DRAINED", current.section);
+//console.log(" .. DRAINED", current.section);
                                         // 02-EntityMapping
                                         if (
                                             current.section === "mapping" &&
@@ -207,9 +217,16 @@ exports.forLib = function (LIB) {
                                             current.section = "entity";
                                             return;
                                         }
+                                    } else
+                                    if (
+                                        current.section === "entity" &&
+                                        type === "closeobject"
+                                    ) {
+                                        current.section = null;
+                                        return;
                                     }
-        
-        
+
+
                                     // 01-EntityImplementation
                                     if (
                                         current.section === null &&
@@ -268,7 +285,7 @@ exports.forLib = function (LIB) {
                                             value.substring(1)
                                         ), current.drainCount]);
                                     } else
-                                    
+
                                     // 04-ConfigInheritance
                                     if (
                                         current.section === "config" &&
@@ -317,7 +334,7 @@ exports.forLib = function (LIB) {
                                     
                                     {
             
-        //    console.log("  **** UNHANDLED TOKEN", type, value, current.section);
+//console.log("  **** UNHANDLED TOKEN", type, value, current.section);
                                     }
             
                                     // A new drain was registered so we ensure it unhooks itself when done.
@@ -990,7 +1007,7 @@ exports.forLib = function (LIB) {
                 }
             }
 
-            return parseFile(path, options).then(function (config) {
+            return parseFile(path, options || {}).then(function (config) {
     
                 return config.flattenExtends().then(function () {
     

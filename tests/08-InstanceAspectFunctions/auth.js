@@ -23,7 +23,7 @@ exports.forLib = function (LIB) {
                     return secrets;
                 }
             }
-            Entity.prototype._entity = "07-InstanceAspects/auth";
+            Entity.prototype._entity = "08-InstanceAspectFunctions/auth";
             Entity.prototype.config = defaultConfig;
 
             return Entity;

@@ -5,6 +5,9 @@
         },
         "auth.impl": {
             "$": "./auth.ccjson"
+        },
+        "route.express": {
+            "$": "./route.ccjson"
         }
     },
     "@profile.impl": {
@@ -36,6 +39,18 @@
                 "someVariable3": "(EncryptedUsingSecretValue)Value3"
         	},
         	"$profile.makeDecrypter()->decrypter": {
+            }
+        }
+    },
+    "@route.express": {
+        "$0.routes.auth.passport": {
+            "namespace": "0",
+            "$profile.makeDecrypter()->decrypter": {
+            }
+        },
+        "$0.routes.proxy.smi.cache.org.travis-ci": {
+            "namespace": "0",
+            "$profile.makeDecrypter()->decrypter": {
             }
         }
     }

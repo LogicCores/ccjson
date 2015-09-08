@@ -30,7 +30,7 @@ exports.forLib = function (LIB) {
                     });
                 }
             }
-            Entity.prototype._entity = "07-InstanceAspects/profile";
+            Entity.prototype._entity = "08-InstanceAspectFunctions/profile";
             Entity.prototype.config = defaultConfig;
 
             return Entity;
