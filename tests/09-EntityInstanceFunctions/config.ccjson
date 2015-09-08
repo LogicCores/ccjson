@@ -1,0 +1,12 @@
+{
+    "@": {
+        "entity": {
+            "$": "./entity.ccjson"
+        }
+    },
+    "@entity": {
+        "$inst1": {
+            "foo": "bar"
+        }
+    }
+}

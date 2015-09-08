@@ -1,0 +1,28 @@
+{
+    "@": {
+        "profile.impl": {
+            "$": "./profile.ccjson"
+        },
+        "auth.impl": {
+            "$": "./auth.ccjson"
+        }
+    },
+    "@profile.impl": {
+        "$profile": {
+            "secret": "SecretValue"
+        }
+    },
+    "@auth.impl": {
+        "$auth": {
+        	"$profile.makeDecrypter()->decrypters/1": {
+                "componentSecret": "SecretDecrypter1Value"
+            },
+        	"secrets": {
+        	    "component1": {
+        	        "decoder": "{{$../../decrypters/1}}",
+        	        "value": "(EncryptedUsing:SecretValue:SecretDecrypter1Value)Value1"
+        	    }
+        	}
+        }
+    }
+}

@@ -14,23 +14,14 @@
     },
     "@auth.impl": {
         "$auth": {
+            "$profile.decrypt()->.": {
+                "someVariable1": "(EncryptedUsing:SecretValue)Value1"
+        	},            
             "$profile.decrypt()->set1": {
-                "someVariable": "(EncryptedUsingSecretValue)Value",
-                "someVariableA": "(EncryptedUsingSecretValue)ValueA"
-        	},
-        	"set1": {
-                "someVariableA": "OurOverrideValueA",
-                "someVariableB": "OurValueB"
-        	},
-        	"set2": {
-                "someVariableC": "OurValueC",
-                "sub": {
-                    "someVariableD": "OurValueD",
-                    "someVariable2": "OurOriginalValue"
-                }
+                "someVariable2": "(EncryptedUsing:SecretValue)Value2"
         	},
             "$profile.decrypt()->set2/sub": {
-                "someVariable2": "(EncryptedUsingSecretValue)Value2"
+                "someVariable3": "(EncryptedUsing:SecretValue)Value3"
         	}
         }
     }

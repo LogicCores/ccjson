@@ -1,5 +1,6 @@
 
 exports.forLib = function (LIB) {
+    var ccjson = this;
 
     return LIB.Promise.resolve({
         forConfig: function (defaultConfig) {
@@ -23,9 +24,16 @@ exports.forLib = function (LIB) {
                     return LIB.Promise.resolve({
                         decrypt: function () {
                             var json = LIB.CJSON.stringify(aspectConfig);
-                            json = json.replace(new RegExp("\\(EncryptedUsing:" + config.secret + "\\)", "g"), "");
+                            json = json.replace(new RegExp("\\(EncryptedUsing" + config.secret + "\\)", "g"), "");
                             aspectConfig = JSON.parse(json);
                             return LIB.Promise.resolve(aspectConfig);
+                        },
+                        makeDecrypter: function () {
+                            return LIB.Promise.resolve(
+                                ccjson.makeDetachedFunction(function (payload) {
+                                    return "decrypted:" + payload;
+                                })
+                            );
                         }
                     });
                 }
