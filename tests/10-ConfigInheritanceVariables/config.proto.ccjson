@@ -1,7 +1,12 @@
 {
     "@": {
         "$": [
-            "./config.proto.super.ccjson"
+            [
+                "./config.proto.super.ccjson",
+                {
+                    "customKey": "CustomValue"
+                }
+            ]
         ],
         "entity": {
             "protoEntityKey": "ProtoEntityValue"

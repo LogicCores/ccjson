@@ -120,7 +120,7 @@ exports.forLib = function (LIB) {
                                     if (current.drains.length > 0) {
                                         
                                         drainOnStart = current.drains[current.drains.length-1][0];
-        
+
 //console.log("  ... draining token", type, value, current.section);
 
         //console.log("drainOnStart", drainOnStart);        
@@ -218,6 +218,13 @@ exports.forLib = function (LIB) {
                                         ) {
                                             current.section = "entity";
                                             return;
+                                        } else
+                                        if (
+                                            current.section === "inherit-record" &&
+                                            type === "closearray"
+                                        ) {
+                                            current.section = "config";
+                                            return;
                                         }
                                     } else
                                     if (
@@ -306,15 +313,25 @@ exports.forLib = function (LIB) {
                                         current.section === "inherit" &&
                                         type === "openarray"
                                     ) {
-                                        // Ignore
+                                        current.section = "inherit-record";
                                     } else
                                     if (
-                                        current.section === "inherit" &&
+                                        current.section === "inherit-record" &&
                                         type === "value"
                                     ) {
-                                        config.registerInheritedEntityImplementation(
-                                            /^\//.test(value) ? value : LIB.path.join(path, "..", value)
-                                        );
+                                        config.registerInheritedEntityImplementation(path, value);
+                                    } else
+                                    if (
+                                        current.section === "inherit-record" &&
+                                        type === "closearray"
+                                    ) {
+                                        current.section = "config";
+                                    } else
+                                    if (
+                                        current.section === "inherit-record" &&
+                                        type === "openarray"
+                                    ) {
+                                        current.drains.push([config.registerInheritedEntityImplementation(path), current.drainCount]);
                                     } else
                                     if (
                                         current.section === "inherit" &&
@@ -517,9 +534,13 @@ exports.forLib = function (LIB) {
                 });
                 
                 self.on("openarray", function () {
-                    pointerHistory.push(currentPointer);
-                    currentPointer = currentPointer[currentKey] = [];
-                    currentKey = null;
+                    if (currentKey) {
+                        pointerHistory.push(currentPointer);
+                        currentPointer = currentPointer[currentKey] = [];
+                        currentKey = null;
+                    } else {
+                        currentPointer = config = [];
+                    }
                 });
                 self.on("closearray", function () {
                     if (pointerHistory.length === 0) {
@@ -584,10 +605,37 @@ exports.forLib = function (LIB) {
                     };
                 }
         
-                self.registerInheritedEntityImplementation = function (path) {
-                    entity.inheritedImplementations.push({
-                        impl: parseFile(path, parseOptions, callingEntities.concat(entity))
-                    });
+                self.registerInheritedEntityImplementation = function (baseConfigPath, path) {
+                    
+                    function normalizePath (path) {
+                        return /^\//.test(path) ? path : LIB.path.join(baseConfigPath, "..", path)
+                    }
+                    
+                    if (path) {
+                        entity.inheritedImplementations.push({
+                            impl: parseFile(normalizePath(path), parseOptions, callingEntities.concat(entity))
+                        });
+                    } else {
+                        // We are defining a path with extra config so we need to collect
+                        // config before we can parse the file and inject the config.
+                        var info = {
+                            _type: "inherited-entity-implementation",
+                            assembler: new ConfigObjectAssembler(),
+                            impl: null,
+                            overrides: []
+                        };
+                        info.assembler.emit("openarray", false);
+                        info.assembler.on("end", function () {
+                            info.impl = info.assembler.assemble().then(function (config) {
+                                return parseFile(normalizePath(config[0]), parseOptions, callingEntities.concat(entity));
+                            });
+                        });
+                        entity.inheritedImplementations.push(info);
+                        return {
+                            _type: "inherited-entity-implementation",
+                            drain: info
+                        };
+                    }
                 }
         
                 self.registerEntityMappingDeclaration = function (alias, path) {

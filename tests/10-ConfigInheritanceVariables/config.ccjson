@@ -1,7 +1,12 @@
 {
     "@": {
         "$": [
-            "./config.proto.ccjson"
+            [
+                "./config.proto.ccjson",
+                {
+                    "namespace": "0"
+                }
+            ]
         ]
     },
     "@entity": {
