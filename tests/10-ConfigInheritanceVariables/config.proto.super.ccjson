@@ -1,0 +1,16 @@
+{
+    "@": {
+        "entity": {
+            "$": "../01-EntityImplementation/entity.ccjson",
+            "protoSuperEntityKey": "ProtoSuperEntityValue"
+        }
+    },
+    "@entity": {
+        "$inst1": {
+            "protoSuperEntityInstance1Key": "ProtoSuperEntityInstance1Value"
+        },
+        "$inst2": {
+            "protoSuperEntityInstance2Key": "ProtoSuperEntityInstance2Value"
+        }
+    }
+}

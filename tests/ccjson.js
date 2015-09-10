@@ -22,6 +22,7 @@ var TESTS = {
     "07": true,
     "08": true,
     "09": true,
+    "10": true,
     "99": true
 };
 
@@ -29,7 +30,7 @@ var TESTS = {
 describe('ccjson', function() {
 
     const EXPECTATIONS = {
-        "01-EntityImplementation": function (overrides) {
+        "01-EntityImplementation": function (overrides, proto) {
             var config = {
                 _entity: '01-EntityImplementation/entity',
                 config: {
@@ -55,9 +56,26 @@ describe('ccjson', function() {
                 }
             };
             _.merge(config, overrides || {});
+            _.merge(config, proto || {});
             return config;
         }
     };
+    
+    function makeTestable (property, obj) {
+        if (property === "@entities") {
+            Object.keys(obj).forEach(function (name) {
+                obj[name] = obj[name].prototype;
+                if (obj[name]["@instances"]) {
+                    obj[name]["@instances"] = Object.keys(obj[name]["@instances"]);
+                }
+            });
+        } else
+        if (property === "@instances") {
+            Object.keys(obj).forEach(function (name) {
+                obj[name] = obj[name].toString();
+            });
+        }
+    }
 
     if (TESTS["01"])
     it('01-EntityImplementation', function (done) {
@@ -81,7 +99,7 @@ describe('ccjson', function() {
         ).then(function (config) {
 
             delete config.prototype.getInstance;
-            config.prototype["@entities"]["entity"] = config.prototype["@entities"]["entity"].prototype;
+            makeTestable("@entities", config.prototype["@entities"]);
 
 //console.log("config", JSON.stringify(config.prototype, null, 4));
 
@@ -106,11 +124,18 @@ describe('ccjson', function() {
         ).then(function (config) {
 
             delete config.prototype.getInstance;
-            config.prototype["@entities"]["entity"] = config.prototype["@entities"]["entity"].prototype;
-            config.prototype["@instances"]["inst1"] = config.prototype["@instances"]["inst1"].toString();
-            config.prototype["@instances"]["inst2"] = config.prototype["@instances"]["inst2"].toString();
-
-//console.log("config", JSON.stringify(config.prototype, null, 4));
+            makeTestable("@entities", config.prototype["@entities"]);
+            makeTestable("@instances", config.prototype["@instances"]);
+            var proto = {
+                "@instances": [
+                    "inst1",
+                    "inst2"
+                ],
+                "@instances.order": [
+                    "inst1",
+                    "inst2"
+                ]                
+            };
 
             ASSERT.deepEqual(config.prototype, {
                 "@entities": {
@@ -119,21 +144,23 @@ describe('ccjson', function() {
                             "override": "should be overwritten below",
                             "newOverride": "Our Override"
                         }
-                    })
+                    }, proto)
                 },
                 "@instances": {
                     "inst1": EXPECTATIONS["01-EntityImplementation"]({
                         "config": {
                             "override": "New Value 1",
-                            "newOverride": "Our Override"
+                            "newOverride": "Our Override",
+                            "$alias": "inst1"
                         }
-                    }),
+                    }, proto),
                     "inst2": EXPECTATIONS["01-EntityImplementation"]({
                         "config": {
                             "override": "New Value 2",
-                            "newOverride": "Our Override"
+                            "newOverride": "Our Override",
+                            "$alias": "inst2"
                         }
-                    })
+                    }, proto)
                 }
             });
             return done();
@@ -150,10 +177,20 @@ describe('ccjson', function() {
 //console.log("config", JSON.stringify(config.prototype, null, 4));
 
             delete config.prototype.getInstance;
-            config.prototype["@entities"]["entity"] = config.prototype["@entities"]["entity"].prototype;
-            config.prototype["@instances"]["inst1"] = config.prototype["@instances"]["inst1"].toString();
-            config.prototype["@instances"]["inst2"] = config.prototype["@instances"]["inst2"].toString();
-            config.prototype["@instances"]["inst3"] = config.prototype["@instances"]["inst3"].toString();
+            makeTestable("@entities", config.prototype["@entities"]);
+            makeTestable("@instances", config.prototype["@instances"]);
+            var proto = {
+                "@instances": [
+                    "inst3",
+                    "inst1",
+                    "inst2"
+                ],
+                "@instances.order": [
+                    "inst3",
+                    "inst1",
+                    "inst2"
+                ]
+            };
 
 //console.log("config", JSON.stringify(config.prototype, null, 4));
 
@@ -164,27 +201,30 @@ describe('ccjson', function() {
                             "override": "should be overwritten below",
                             "newOverride": "New Override from our config"
                         }
-                    })
+                    }, proto)
                 },
                 "@instances": {
                     "inst1": EXPECTATIONS["01-EntityImplementation"]({
                         "config": {
                             "override": "New Value 1",
-                            "newOverride": "New Override from our config"
+                            "newOverride": "New Override from our config",
+                            "$alias": "inst1"
                         }
-                    }),
+                    }, proto),
                     "inst2": EXPECTATIONS["01-EntityImplementation"]({
                         "config": {
                             "override": "New Value 2",
-                            "newOverride": "New Override from our config"
+                            "newOverride": "New Override from our config",
+                            "$alias": "inst2"
                         }
-                    }),
+                    }, proto),
                     "inst3": EXPECTATIONS["01-EntityImplementation"]({
                         "config": {
                             "override": "New Value 3",
-                            "newOverride": "New Override from our config"
+                            "newOverride": "New Override from our config",
+                            "$alias": "inst3"
                         }
-                    })
+                    }, proto)
                 }
             });
             return done();
@@ -197,12 +237,29 @@ describe('ccjson', function() {
         return ccjson.parseFile(
             PATH.join(__dirname, "05-MultipleEntityMappingsAndInstances/config.ccjson")
         ).then(function (config) {
-            config.prototype["@entities"]["entity"] = config.prototype["@entities"]["entity"].prototype;
-            config.prototype["@entities"]["entity.ours"] = config.prototype["@entities"]["entity.ours"].prototype;
-            config.prototype["@instances"]["inst.E.a"] = config.prototype["@instances"]["inst.E.a"].toString();
-            config.prototype["@instances"]["inst.E.b"] = config.prototype["@instances"]["inst.E.b"].toString();
-            config.prototype["@instances"]["inst.EO.a"] = config.prototype["@instances"]["inst.EO.a"].toString();
-            config.prototype["@instances"]["inst.EO.b"] = config.prototype["@instances"]["inst.EO.b"].toString();
+
+            makeTestable("@entities", config.prototype["@entities"]);
+            makeTestable("@instances", config.prototype["@instances"]);
+            var proto1 = {
+                "@instances": [
+                    "inst.E.a",
+                    "inst.E.b"
+                ],
+                "@instances.order": [
+                    "inst.E.a",
+                    "inst.E.b"
+                ]
+            };
+            var proto2 = {
+                "@instances": [
+                    "inst.EO.a",
+                    "inst.EO.b"
+                ],
+                "@instances.order": [
+                    "inst.EO.a",
+                    "inst.EO.b"
+                ]
+            };
 
 //console.log("config", JSON.stringify(config.prototype, null, 4));
 
@@ -213,39 +270,43 @@ describe('ccjson', function() {
                         "config": {
                             "newOverride": "New Override"
                         }
-                    }),
-                    "entity.ours": {
+                    }, proto1),
+                    "entity.ours": LIB._.assign({
                         "_entity": "05-MultipleEntityMappingsAndInstances/entity",
                         "config": {
                             "ourDefault": "Val"
                         }
-                    }
+                    }, proto2)
                 },
                 "@instances": {
                     "inst.E.a": EXPECTATIONS["01-EntityImplementation"]({
                         "config": {
                             "newOverride": "New Override",
-                            "foo": "bar1"
+                            "foo": "bar1",
+                            "$alias": "inst.E.a"
                         }
-                    }),
+                    }, proto1),
                     "inst.E.b": EXPECTATIONS["01-EntityImplementation"]({
                         "config": {
-                            "newOverride": "New Override"
+                            "newOverride": "New Override",
+                            "$alias": "inst.E.b"
                         }
-                    }),
-                    "inst.EO.a": {
-                        "_entity": "05-MultipleEntityMappingsAndInstances/entity",
-                        "config": {
-                            "ourDefault": "Val"
-                        }
-                    },
-                    "inst.EO.b": {
+                    }, proto1),
+                    "inst.EO.a": LIB._.assign({
                         "_entity": "05-MultipleEntityMappingsAndInstances/entity",
                         "config": {
                             "ourDefault": "Val",
-                            "foo": "bar3"
+                            "$alias": "inst.EO.a"
                         }
-                    }
+                    }, proto2),
+                    "inst.EO.b": LIB._.assign({
+                        "_entity": "05-MultipleEntityMappingsAndInstances/entity",
+                        "config": {
+                            "ourDefault": "Val",
+                            "foo": "bar3",
+                            "$alias": "inst.EO.b"
+                        }
+                    }, proto2)
                 }
             });
             return done();
@@ -268,10 +329,20 @@ describe('ccjson', function() {
         ).then(function (config) {
 
             delete config.prototype.getInstance;
-            config.prototype["@entities"]["entity"] = config.prototype["@entities"]["entity"].prototype;
-            config.prototype["@instances"]["inst1"] = config.prototype["@instances"]["inst1"].toString();
-            config.prototype["@instances"]["inst2"] = config.prototype["@instances"]["inst2"].toString();
-            config.prototype["@instances"]["inst3"] = config.prototype["@instances"]["inst3"].toString();
+            makeTestable("@entities", config.prototype["@entities"]);
+            makeTestable("@instances", config.prototype["@instances"]);
+            var proto1 = {
+                "@instances": [
+                    "inst2",
+                    "inst1",
+                    "inst3"
+                ],
+                "@instances.order": [
+                    "inst2",
+                    "inst3",
+                    "inst1"
+                ]
+            };
 
 //console.log("config", JSON.stringify(config.prototype, null, 4));
 
@@ -282,7 +353,7 @@ describe('ccjson', function() {
                             "ourBasePathInSubMappings": PATH.join(__dirname, "06-Variables/sub"),
                             "ourBasePathInMappings": PATH.join(__dirname, "06-Variables")
                         }
-                    })
+                    }, proto1)
                 },
                 "@instances": {
                     "inst1": EXPECTATIONS["01-EntityImplementation"]({
@@ -298,17 +369,19 @@ describe('ccjson', function() {
                             },
                             "myobjDuplicate": {
                                 "mysubvar": "myobj:sub:inst1:my-env-var-value"
-                            }
+                            },
+                            "$alias": "inst1"
                         }
-                    }),
+                    }, proto1),
                     "inst2": EXPECTATIONS["01-EntityImplementation"]({
                         "config": {
                             "ourBasePathInSubMappings": PATH.join(__dirname, "06-Variables/sub"),
                             "ourBasePathInMappings": PATH.join(__dirname, "06-Variables"),
                             "ourBasePathInSubInstances": PATH.join(__dirname, "06-Variables"),
-                            "ourBasePathInInstances": PATH.join(__dirname, "06-Variables")
+                            "ourBasePathInInstances": PATH.join(__dirname, "06-Variables"),
+                            "$alias": "inst2"
                         }
-                    }),
+                    }, proto1),
                     "inst3": EXPECTATIONS["01-EntityImplementation"]({
                         "config": {
                             "myvar": "my-env-var-value",
@@ -319,9 +392,10 @@ describe('ccjson', function() {
                             "myvarFromInst1": "value:sub:inst1:my-env-var-value:local:my-env-var-value",
                             "myobjFromInst1": {
                                 "mysubvar": "myobj:sub:inst1:my-env-var-value"
-                            }
+                            },
+                            "$alias": "inst3"
                         }
-                    })
+                    }, proto1)
                 }
             });
 
@@ -336,37 +410,50 @@ describe('ccjson', function() {
             PATH.join(__dirname, "07-InstanceAspects/config.ccjson")
         ).then(function (config) {
 
-//console.log("config", JSON.stringify(config.prototype, null, 4));
-
             delete config.prototype.getInstance;
-            config.prototype["@entities"]["profile.impl"] = config.prototype["@entities"]["profile.impl"].prototype;
-            config.prototype["@entities"]["auth.impl"] = config.prototype["@entities"]["auth.impl"].prototype;
-            config.prototype["@instances"]["profile"] = config.prototype["@instances"]["profile"].toString();
-            config.prototype["@instances"]["auth"] = config.prototype["@instances"]["auth"].toString();
+            makeTestable("@entities", config.prototype["@entities"]);
+            makeTestable("@instances", config.prototype["@instances"]);
+            var proto1 = {
+                "@instances": [
+                    "profile"
+                ],
+                "@instances.order": [
+                    "profile"
+                ]
+            };
+            var proto2 = {
+                "@instances": [
+                    "auth"
+                ],
+                "@instances.order": [
+                    "auth"
+                ]
+            };
 
 //console.log("config", JSON.stringify(config.prototype, null, 4));
 
             ASSERT.deepEqual(config.prototype, {
                 "@entities": {
-                    "profile.impl": {
+                    "profile.impl": LIB._.assign({
                         "_entity": "07-InstanceAspects/profile",
                         "config": {
                         }
-                    },
-                    "auth.impl": {
+                    }, proto1),
+                    "auth.impl": LIB._.assign({
                         "_entity": "07-InstanceAspects/auth",
                         "config": {
                         }
-                    }
+                    }, proto2)
                 },
                 "@instances": {
-                    "profile": {
+                    "profile": LIB._.assign({
                         "_entity": "07-InstanceAspects/profile",
                         "config": {
-                            "secret": "SecretValue"
+                            "secret": "SecretValue",
+                            "$alias": "profile"
                         }
-                    },
-                    "auth": {
+                    }, proto1),
+                    "auth": LIB._.assign({
                         "_entity": "07-InstanceAspects/auth",
                         "config": {
                             "someVariable1": "Value1",
@@ -377,9 +464,10 @@ describe('ccjson', function() {
                                 "sub": {
                                     "someVariable3": "Value3"
                                 }
-                            }
+                            },
+                            "$alias": "auth"
                         }
-                    }
+                    }, proto2)
                 }
             });
 
@@ -395,23 +483,41 @@ describe('ccjson', function() {
         ).then(function (config) {
 
             delete config.prototype.getInstance;
-            config.prototype["@entities"]["profile.impl"] = config.prototype["@entities"]["profile.impl"].prototype;
-            config.prototype["@entities"]["auth.impl"] = config.prototype["@entities"]["auth.impl"].prototype;
-            config.prototype["@instances"]["profile"] = config.prototype["@instances"]["profile"].toString();
-            config.prototype["@instances"]["auth"] = config.prototype["@instances"]["auth"].getSecrets();
+            var secrets = config.prototype["@instances"]["auth"].getSecrets();
+            makeTestable("@entities", config.prototype["@entities"]);
+            makeTestable("@instances", config.prototype["@instances"]);
+            config.prototype["@instances"]["auth"] = secrets;
+            var proto1 = {
+                "@instances": [
+                    "profile"
+                ],
+                "@instances.order": [
+                    "profile"
+                ]
+            };
+            var proto2 = {
+                "@instances": [
+                    "auth"
+                ],
+                "@instances.order": [
+                    "auth"
+                ]
+            };
+
+//console.log("config", JSON.stringify(config.prototype, null, 4));
 
             ASSERT.deepEqual(config.prototype, {
                 "@entities": {
-                    "profile.impl": {
+                    "profile.impl": LIB._.assign({
                         "_entity": "08-InstanceAspectFunctions/profile",
                         "config": {
                         }
-                    },
-                    "auth.impl": {
+                    }, proto1),
+                    "auth.impl": LIB._.assign({
                         "_entity": "08-InstanceAspectFunctions/auth",
                         "config": {
                         }
-                    }
+                    }, proto2)
                 },
                 "@instances": {
                     "profile": {},
@@ -437,7 +543,69 @@ describe('ccjson', function() {
             var result = inst1.spin();
 
             ASSERT.deepEqual(result, {
-                "foo": "bar"
+                "foo": "bar",
+                "$alias": "inst1"
+            });
+
+            return done();
+        }).catch(done);
+    });
+
+    if (TESTS["10"])
+    it('10-ConfigInheritanceVariables', function (done) {
+        var ccjson = new CCJSON();
+        return ccjson.parseFile(
+            PATH.join(__dirname, "10-ConfigInheritanceVariables/config.ccjson")
+        ).then(function (config) {
+
+            delete config.prototype.getInstance;
+            makeTestable("@entities", config.prototype["@entities"]);
+            makeTestable("@instances", config.prototype["@instances"]);
+            var proto1 = {
+                "@instances": [
+                    "inst1",
+                    "inst2"
+                ],
+                "@instances.order": [
+                    "inst1",
+                    "inst2"
+                ]
+            };
+
+//console.log("config", JSON.stringify(config.prototype, null, 4));
+
+            ASSERT.deepEqual(config.prototype, {
+                "@entities": {
+                    "entity": EXPECTATIONS["01-EntityImplementation"]({
+                        "_entity": "01-EntityImplementation/entity",
+                        "config": {
+                            "protoEntityKey": "ProtoEntityValue",
+                            "protoSuperEntityKey": "ProtoSuperEntityValue"
+                        }
+                    }, proto1)
+                },
+                "@instances": {
+                   "inst1": EXPECTATIONS["01-EntityImplementation"]({
+                        "config": {
+                            "protoEntityKey": "ProtoEntityValue",
+                            "protoSuperEntityKey": "ProtoSuperEntityValue",
+                            "protoSuperEntityInstance1Key": "entityInstance1Value",
+                            "protoEntityInstance1Key": "entityInstance1Value",
+                            "entityInstance1Key": "entityInstance1Value",
+                            "$alias": "inst1"
+                        }
+                    }, proto1),
+                    "inst2": EXPECTATIONS["01-EntityImplementation"]({
+                        "config": {
+                            "protoEntityKey": "ProtoEntityValue",
+                            "protoSuperEntityKey": "ProtoSuperEntityValue",
+                            "protoSuperEntityInstance2Key": "ProtoSuperEntityInstance2Value",
+                            "protoEntityInstance2Key": "ProtoEntityInstance2Value",
+                            "entityInstance2Key": "entityInstance2Value",
+                            "$alias": "inst2"
+                        }
+                    }, proto1)
+                }
             });
 
             return done();
@@ -454,55 +622,79 @@ describe('ccjson', function() {
 //console.log("config", JSON.stringify(config.prototype, null, 4));
 
             delete config.prototype.getInstance;
-            config.prototype["@entities"]["profile.impl"] = config.prototype["@entities"]["profile.impl"].prototype;
-            config.prototype["@entities"]["auth.impl"] = config.prototype["@entities"]["auth.impl"].prototype;
-            config.prototype["@entities"]["route.express"] = config.prototype["@entities"]["route.express"].prototype;
-            config.prototype["@instances"]["profile"] = config.prototype["@instances"]["profile"].toString();
-            config.prototype["@instances"]["auth"] = config.prototype["@instances"]["auth"].toString();
-            config.prototype["@instances"]["0.routes.auth.passport"] = config.prototype["@instances"]["0.routes.auth.passport"].toString();
-            config.prototype["@instances"]["0.routes.proxy.smi.cache.org.travis-ci"] = config.prototype["@instances"]["0.routes.proxy.smi.cache.org.travis-ci"].toString();
+            makeTestable("@entities", config.prototype["@entities"]);
+            makeTestable("@instances", config.prototype["@instances"]);
+            var proto1 = {
+                "@instances": [
+                    "profile"
+                ],
+                "@instances.order": [
+                    "profile"
+                ]
+            };
+            var proto2 = {
+                "@instances": [
+                    "auth"
+                ],
+                "@instances.order": [
+                    "auth"
+                ]
+            };
+            var proto3 = {
+                "@instances": [
+                    "0.routes.auth.passport",
+                    "0.routes.proxy.smi.cache.org.travis-ci"
+                ],
+                "@instances.order": [
+                    "0.routes.auth.passport",
+                    "0.routes.proxy.smi.cache.org.travis-ci"
+                ]
+            };
 
 //console.log("config", JSON.stringify(config.prototype, null, 4));
 
             ASSERT.deepEqual(config.prototype, {
                 "@entities": {
-                    "profile.impl": {
+                    "profile.impl": LIB._.assign({
                         "_entity": "99-ZeroSystem-01/profile",
                         "config": {
                         }
-                    },
-                    "auth.impl": {
+                    }, proto1),
+                    "auth.impl": LIB._.assign({
                         "_entity": "99-ZeroSystem-01/auth",
                         "config": {
                         }
-                    },
-                    "route.express": {
+                    }, proto2),
+                    "route.express": LIB._.assign({
                         "_entity": "99-ZeroSystem-01/route",
                         "config": {}
-                    }
+                    }, proto3)
                 },
                 "@instances": {
-                    "profile": {
+                    "profile": LIB._.assign({
                         "_entity": "99-ZeroSystem-01/profile",
                         "config": {
-                            "secret": "SecretValue"
+                            "secret": "SecretValue",
+                            "$alias": "profile"
                         }
-                    },
-                    "0.routes.auth.passport": {
+                    }, proto1),
+                    "0.routes.auth.passport": LIB._.assign({
                         "_entity": "99-ZeroSystem-01/route",
                         "config": {
                             "namespace": "0",
-                            "decrypter": "&func&f:1"
+                            "decrypter": "&func&f:1",
+                            "$alias": "0.routes.auth.passport"
                         }
-                    },
-                    "0.routes.proxy.smi.cache.org.travis-ci": {
+                    }, proto3),
+                    "0.routes.proxy.smi.cache.org.travis-ci": LIB._.assign({
                         "_entity": "99-ZeroSystem-01/route",
                         "config": {
                             "namespace": "0",
-                            "decrypter": "&func&f:2"
+                            "decrypter": "&func&f:2",
+                            "$alias": "0.routes.proxy.smi.cache.org.travis-ci"
                         }
-                    },
-                    "auth": {
+                    }, proto3),
+                    "auth": LIB._.assign({
                         "_entity": "99-ZeroSystem-01/auth",
                         "config": {
                             "set1": {
@@ -518,9 +710,10 @@ describe('ccjson', function() {
                                 }
                             },
                             "someVariable3": "Value3",
-                            "decrypter": "&func&f:3"
+                            "decrypter": "&func&f:3",
+                            "$alias": "auth"
                         }
-                    }
+                    }, proto2)
                 }
             });
 

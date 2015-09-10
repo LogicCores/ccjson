@@ -1,0 +1,19 @@
+{
+    "@": {
+        "$": [
+            "./config.proto.super.ccjson"
+        ],
+        "entity": {
+            "protoEntityKey": "ProtoEntityValue"
+        }
+    },
+    "@entity": {
+        "$inst1": {
+            "protoEntityInstance1Key": "ProtoEntityInstance1Value",
+            "protoSuperEntityInstance1Key": "ProtoEntityInstance1Value"
+        },
+        "$inst2": {
+            "protoEntityInstance2Key": "ProtoEntityInstance2Value"
+        }
+    }
+}

@@ -52,8 +52,10 @@ exports.forLib = function (LIB) {
 
         ccjson.parseFile = function (path, options) {
 
-            function parseFile (path, parseOptions) {
-    
+            function parseFile (path, parseOptions, callingEntities) {
+
+                callingEntities = callingEntities || [];
+
         //console.log("\n\n---------------------------------------------------");
         //console.log("PARSE CJSON FILE:", path);
         //console.log("---------------------------------------------------");
@@ -85,7 +87,7 @@ exports.forLib = function (LIB) {
         
                         try {
         
-                            var config = new Config(path, parseOptions);
+                            var config = new Config(path, parseOptions, callingEntities);
         
                             var stream = CLARINET.createStream({});
             
@@ -259,6 +261,12 @@ exports.forLib = function (LIB) {
                                     ) {
                                         current.drains.push([config.registerEntityMappingDeclaration(value), current.drainCount]);
                                         current.section = "mapping";
+                                    } else
+                                    if (
+                                        current.section === "config" &&
+                                        type === "closeobject"
+                                    ) {
+                                        current.section = null;
                                     } else
             
                                     // 03-EntityInstance
@@ -551,7 +559,7 @@ exports.forLib = function (LIB) {
             ConfigObjectAssembler.prototype = Object.create(EVENTS.EventEmitter.prototype);
         
             
-            var Config = function (path, parseOptions) {
+            var Config = function (path, parseOptions, callingEntities) {
                 var self = this;
         
                 var entity = {
@@ -559,8 +567,8 @@ exports.forLib = function (LIB) {
                     inheritedImplementations: [],
                     mappings: {},
                     instances: {}
-                }
-        
+                };
+                
                 self.registerEntityImplementation = function (path) {
                     entity.implementation = {
                         _type: "entity-implementation",
@@ -578,7 +586,7 @@ exports.forLib = function (LIB) {
         
                 self.registerInheritedEntityImplementation = function (path) {
                     entity.inheritedImplementations.push({
-                        impl: parseFile(path, parseOptions)
+                        impl: parseFile(path, parseOptions, callingEntities.concat(entity))
                     });
                 }
         
@@ -592,7 +600,7 @@ exports.forLib = function (LIB) {
                     return {
                         _type: "entity-mapping",
                         onImplementation: function (path) {
-                            entity.mappings[alias].impl = parseFile(path, parseOptions);
+                            entity.mappings[alias].impl = parseFile(path, parseOptions, callingEntities.concat(entity));
                         },
                         drain: entity.mappings[alias]
                     };
@@ -759,10 +767,18 @@ exports.forLib = function (LIB) {
                                                 var instanceAliasParts = layer.aspectInstanceAlias.split(".");
                                                 var instanceAspectMethod = instanceAliasParts.pop();
                                                 var instanceAspectAlias = instanceAliasParts.join(".");
-                                                if (!entity.instances[instanceAspectAlias]) {
+
+                                                var instance = entity.instances[instanceAspectAlias];
+                                                if (!instance) {
+                                                    callingEntities.forEach(function (callingEntity) {
+                                                        if (instance) return;
+                                                        instance = callingEntity.instances[instanceAspectAlias];
+                                                    });
+                                                }
+                                                if (!instance) {
                                                     throw new Error("No declared instance found for aspect alias '" + instanceAspectAlias + "' while resolving aspect instance for entity '" + entityAlias + "' instance '" + instanceAlias + "'");
                                                 }
-            
+
                                                 return getEntityInstance(instanceAspectAlias).then(function (instance) {
                                                     if (typeof instance.AspectInstance !== "function") {
                                                         throw new Error("Aspect instance for '" + instanceAspectAlias + "' cannot me instanciated as entity does not implement 'AspectInstance' factory method");
@@ -878,7 +894,7 @@ exports.forLib = function (LIB) {
                     });
                 }
         
-                self.assemble = function (requestingEntity, overrides) {
+                self.assemble = function (requestingEntity, overrides, context) {
                     var config = {};
 
 //console.log("ASSEMBLE ("+ path +") overrides", overrides);
@@ -899,7 +915,6 @@ exports.forLib = function (LIB) {
                         return entity.implementation.assembler.assemble().then(function (config) {
         
                             return entity.implementation.impl.then(function (factory) {
-                                
                                 return factory.forLib.call(ccjson, LIB).then(function (exports) {
                                     var defaultConfig = LIB._.cloneDeep(config);
                                     LIB._.assign(defaultConfig, overrides || {});
@@ -911,9 +926,9 @@ exports.forLib = function (LIB) {
         
                     function instanciateEntityMappings () {
                         var mappings = {};
-        
+
                         return LIB.Promise.all(Object.keys(entity.mappings).map(function (alias) {
-        
+
                             return entity.mappings[alias].assembler.assemble(
                                 entity.mappings[alias].overrides.map(function (override) {
                                     return {
@@ -936,12 +951,14 @@ exports.forLib = function (LIB) {
                                     });
                                     return impl;
                                 }
-        
+
                                 var impl = getImpl();
                                 if (impl) {
                                     return impl.then(function (config) {
         
-                                        return config.assemble(entity, configOverrides).then(function (config) {
+                                        return config.assemble(entity, configOverrides, {
+                                            entityAlias: alias
+                                        }).then(function (config) {
                                             mappings[alias] = config;
                                         });
                                     });
@@ -956,33 +973,48 @@ exports.forLib = function (LIB) {
                     }
                     
                     function instanciateEntityInstances (mappings) {
+
                         var instances = {};
-        
+                        var instancesByEntity = {};
+
                         var instancePromises = {};
         
                         return LIB.Promise.all(Object.keys(entity.instances).map(function (alias) {
-        
+                            
+                            var entityAlias = entity.instances[alias].entityAlias;
+
+                            if (!instancesByEntity[entityAlias]) {
+                                instancesByEntity[entityAlias] = {
+                                    order: [],
+                                    instances: {}
+                                };
+                            }
+                            instancesByEntity[entityAlias].order.push(alias);
+
                             var getEntityInstance = function (instanceAlias) {
                                 if (!instancePromises[instanceAlias]) {
                                     throw new Error("Instance for alias '" + instanceAlias + "' not yet registered. You must declare it before using it as an instance aspect!");
                                 }
                                 return instancePromises[instanceAlias];
                             }
-        
+
                             return instancePromises[alias] = entity.instances[alias].mergeLayers(getEntityInstance).then(function (configOverrides) {
-        
-                                var entityClass = mappings[entity.instances[alias].entityAlias];
+
+                                var entityClass = mappings[entityAlias];
                                 if (!entityClass) {
                                     throw new Error("Entity '" + entity.instances[alias].entityAlias + "' used for instance '" + alias + "' not mapped!");
                                 }
-        /*
-                                var instance = Object.create({
-                                    "$impl": impl
-                                });
-                                LIB._.assign(instance, entityConfig)
-                                instances[instanceAlias] = instance;
-        */
-                                return (instances[alias] = new entityClass(configOverrides));
+
+                                entityClass.prototype["@instances"] = instancesByEntity[entityAlias].instances;
+                                entityClass.prototype["@instances.order"] = instancesByEntity[entityAlias].order;
+
+                                configOverrides["$alias"] = alias;
+
+                                var instance = new entityClass(configOverrides);
+
+                                instances[alias] = instance;
+                                instancesByEntity[entityAlias].instances[alias] = instance;
+                                return instance;
                             });
                         })).then(function () {
                             return instances;
@@ -996,10 +1028,14 @@ exports.forLib = function (LIB) {
                             if (Object.keys(mappings).length) {
                                 impl.prototype["@entities"] = mappings;
                             }
+                            
+//console.log("requestingEntity", requestingEntity);
+
                             return instanciateEntityInstances(impl.prototype["@entities"] || {}).then(function (instances) {
                                 if (Object.keys(instances).length > 0) {
                                     impl.prototype["@instances"] = instances;
                                 }
+                                
                                 return impl;
                             });
                         });
