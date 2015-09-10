@@ -6,11 +6,11 @@
         }
     },
     "@entity": {
-        "$inst1": {
+        "${{ARG.namespace}}.inst1": {
             "protoSuperEntityInstance1Key": "ProtoSuperEntityInstance1Value"
         },
-        "$inst2": {
-            "protoSuperEntityInstance2Key": "ProtoSuperEntityInstance2Value"
+        "${{ARG.namespace}}.inst2": {
+            "protoSuperEntityInstance2Key": "ProtoSuperEntityInstance2Value:{{ARG.customKey}}"
         }
     }
 }

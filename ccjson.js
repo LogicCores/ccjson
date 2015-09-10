@@ -86,7 +86,17 @@ exports.forLib = function (LIB) {
                     return new LIB.Promise(function (resolve, reject) {
         
                         try {
-        
+                            
+                            // Merge args from calling entities
+                            var callingArgs = {};
+                            var ourCallingEntities = [].concat(callingEntities);
+                            ourCallingEntities.reverse();
+                            ourCallingEntities.forEach(function (callingEntity) {
+                                callingEntity.inheritedImplementations.forEach(function (impl) {
+                                    LIB._.merge(callingArgs, impl.args);
+                                });
+                            });
+
                             var config = new Config(path, parseOptions, callingEntities);
         
                             var stream = CLARINET.createStream({});
@@ -380,11 +390,46 @@ exports.forLib = function (LIB) {
                                     throw err;
                                 }
                             }
+                            
+                            function replaceAnywhereVariables (value) {
+
+                                if (typeof value !== "string") {
+                                    return value;
+                                }
+
+                                // TODO: Optionally don't replace variables
+
+                                value = value.replace(/\{\{__DIRNAME__\}\}/g, LIB.path.dirname(path));
+                                var m = null;
+    
+                                var re = /\{\{(!)?(?:env|ENV)\.([^\}]+)\}\}/g;
+                                while (m = re.exec(value)) {
+                                    value = value.replace(
+                                        new RegExp(ESCAPE_REGEXP(m[0]), "g"),
+                                        parseOptions.env(m[2])
+                                    );
+                                }
+    
+                                var re = /\{\{(!)?(?:arg|ARG)\.([^\}]+)\}\}/g;
+                                while (m = re.exec(value)) {
+                                    if (typeof callingArgs[m[2]] === "undefined") {
+                                        throw new Error("Argument '" + m[2] + "' not found in calling arguments!");
+                                    }
+                                    value = value.replace(
+                                        new RegExp(ESCAPE_REGEXP(m[0]), "g"),
+                                        callingArgs[m[2]]
+                                    );
+                                }
+                                
+                                return value;
+                            }
         
                             stream.on("openobject", function (key) {
+                                key = replaceAnywhereVariables(key);
                                 nextToken("openobject", key);
                             });
                             stream.on("key", function (key) {
+                                key = replaceAnywhereVariables(key);
                                 nextToken("key", key);
                             });
                             stream.on("value", function (value) {
@@ -394,18 +439,9 @@ exports.forLib = function (LIB) {
                                 // These are set in stone after parsing.
                                 // If you need dynamic variables use '{{$*}}' variables.
                                 if (typeof value === "string") {
-                                    // TODO: Optionally don't replace variables
-                                    value = value.replace(/\{\{__DIRNAME__\}\}/g, LIB.path.dirname(path));
-                                    var m = null;
-        
-                                    var re = /\{\{(!)?(?:env|ENV)\.([^\}]+)\}\}/g;
-                                    while (m = re.exec(value)) {
-                                        value = value.replace(
-                                            new RegExp(ESCAPE_REGEXP(m[0]), "g"),
-                                            parseOptions.env(m[2])
-                                        );
-                                    }
-        
+
+                                    value = replaceAnywhereVariables(value);
+
                                     // Check for reference to entity instance variable or local variable selector
                                     var re = /\{\{\$(\.)?([^\}]+)\}\}/g;
                                     while ( (m = re.exec(value)) ) {
@@ -613,7 +649,8 @@ exports.forLib = function (LIB) {
                     
                     if (path) {
                         entity.inheritedImplementations.push({
-                            impl: parseFile(normalizePath(path), parseOptions, callingEntities.concat(entity))
+                            impl: parseFile(normalizePath(path), parseOptions, callingEntities.concat(entity)),
+                            args: {}
                         });
                     } else {
                         // We are defining a path with extra config so we need to collect
@@ -622,11 +659,13 @@ exports.forLib = function (LIB) {
                             _type: "inherited-entity-implementation",
                             assembler: new ConfigObjectAssembler(),
                             impl: null,
+                            args: {},
                             overrides: []
                         };
                         info.assembler.emit("openarray", false);
                         info.assembler.on("end", function () {
                             info.impl = info.assembler.assemble().then(function (config) {
+                                info.args = config[1];
                                 return parseFile(normalizePath(config[0]), parseOptions, callingEntities.concat(entity));
                             });
                         });

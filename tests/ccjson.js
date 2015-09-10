@@ -563,12 +563,12 @@ describe('ccjson', function() {
             makeTestable("@instances", config.prototype["@instances"]);
             var proto1 = {
                 "@instances": [
-                    "inst1",
-                    "inst2"
+                    "0.inst1",
+                    "0.inst2"
                 ],
                 "@instances.order": [
-                    "inst1",
-                    "inst2"
+                    "0.inst1",
+                    "0.inst2"
                 ]
             };
 
@@ -585,24 +585,24 @@ describe('ccjson', function() {
                     }, proto1)
                 },
                 "@instances": {
-                   "inst1": EXPECTATIONS["01-EntityImplementation"]({
+                   "0.inst1": EXPECTATIONS["01-EntityImplementation"]({
                         "config": {
                             "protoEntityKey": "ProtoEntityValue",
                             "protoSuperEntityKey": "ProtoSuperEntityValue",
                             "protoSuperEntityInstance1Key": "entityInstance1Value",
                             "protoEntityInstance1Key": "entityInstance1Value",
                             "entityInstance1Key": "entityInstance1Value",
-                            "$alias": "inst1"
+                            "$alias": "0.inst1"
                         }
                     }, proto1),
-                    "inst2": EXPECTATIONS["01-EntityImplementation"]({
+                    "0.inst2": EXPECTATIONS["01-EntityImplementation"]({
                         "config": {
                             "protoEntityKey": "ProtoEntityValue",
                             "protoSuperEntityKey": "ProtoSuperEntityValue",
-                            "protoSuperEntityInstance2Key": "ProtoSuperEntityInstance2Value",
+                            "protoSuperEntityInstance2Key": "ProtoSuperEntityInstance2Value:CustomValue",
                             "protoEntityInstance2Key": "ProtoEntityInstance2Value",
                             "entityInstance2Key": "entityInstance2Value",
-                            "$alias": "inst2"
+                            "$alias": "0.inst2"
                         }
                     }, proto1)
                 }
