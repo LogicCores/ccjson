@@ -34,6 +34,9 @@ exports.forLib = function (LIB) {
                                     return "decrypted:" + payload;
                                 })
                             );
+                        },
+                        key: function () {
+                            return LIB.Promise.resolve(config.secret + ":" + aspectConfig.extraKey);
                         }
                     });
                 }

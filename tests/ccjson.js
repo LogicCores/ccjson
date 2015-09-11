@@ -23,7 +23,8 @@ var TESTS = {
     "08": true,
     "09": true,
     "10": true,
-    "99": true
+    "99.01": true,
+    "99.02": true
 };
 
 
@@ -393,6 +394,11 @@ describe('ccjson', function() {
                             "myobjFromInst1": {
                                 "mysubvar": "myobj:sub:inst1:my-env-var-value"
                             },
+                            "andAgain": {
+                                "myobjFromInst1nested": {
+                                    "mysubvar": "myobj:sub:inst1:my-env-var-value"
+                                }
+                            },                            
                             "$alias": "inst3"
                         }
                     }, proto1)
@@ -612,7 +618,7 @@ describe('ccjson', function() {
         }).catch(done);
     });
 
-    if (TESTS["99"])
+    if (TESTS["99.01"])
     it('99-ZeroSystem-01', function (done) {
         var ccjson = new CCJSON();
         return ccjson.parseFile(
@@ -683,6 +689,8 @@ describe('ccjson', function() {
                         "config": {
                             "namespace": "0",
                             "decrypter": "&func&f:1",
+                            "key": "SecretValue:key1",
+                            "more": "data1",
                             "$alias": "0.routes.auth.passport"
                         }
                     }, proto3),
@@ -691,6 +699,8 @@ describe('ccjson', function() {
                         "config": {
                             "namespace": "0",
                             "decrypter": "&func&f:2",
+                            "key": "SecretValue:key2",
+                            "more": "data2",
                             "$alias": "0.routes.proxy.smi.cache.org.travis-ci"
                         }
                     }, proto3),
@@ -714,6 +724,99 @@ describe('ccjson', function() {
                             "$alias": "auth"
                         }
                     }, proto2)
+                }
+            });
+
+            return done();
+        }).catch(done);
+    });
+
+    if (TESTS["99.02"])
+    it('99-ZeroSystem-02', function (done) {
+        var ccjson = new CCJSON();
+        return ccjson.parseFile(
+            PATH.join(__dirname, "99-ZeroSystem-02/boot.ccjson")
+        ).then(function (config) {
+
+//console.log("config", JSON.stringify(config.prototype, null, 4));
+
+            delete config.prototype.getInstance;
+            makeTestable("@entities", config.prototype["@entities"]);
+            makeTestable("@instances", config.prototype["@instances"]);
+            var proto1 = {
+                "@instances": [
+                    "stackA.entity",
+                    "stackB.entity"
+                ],
+                "@instances.order": [
+                    "stackA.entity",
+                    "stackB.entity"
+                ]
+            };
+            var proto2 = {
+                "@instances": [
+                    "stackA.fs",
+                    "stackB.fs"
+                ],
+                "@instances.order": [
+                    "stackA.fs",
+                    "stackB.fs"
+                ]
+            }
+
+//console.log("config", JSON.stringify(config.prototype, null, 4));
+
+            ASSERT.deepEqual(config.prototype, {
+                "@entities": {
+                    "entity": EXPECTATIONS["01-EntityImplementation"]({
+                        "_entity": "01-EntityImplementation/entity",
+                        "config": {
+                            "entity": "default"
+                        }
+                    }, proto1),
+                    "fs": LIB._.assign({
+                        "_entity": "99-ZeroSystem-02/fs",
+                        "config": {
+                        }
+                    }, proto2)
+                },
+                "@instances": {
+                    "stackA.fs": LIB._.assign({
+                        "_entity": "99-ZeroSystem-02/fs",
+                        "config": {
+                            "basePath": "cacheBasePathA",
+                            "$alias": "stackA.fs"
+                        }
+                    }, proto2),
+                    "stackB.fs": LIB._.assign({
+                        "_entity": "99-ZeroSystem-02/fs",
+                        "config": {
+                            "basePath": "cacheBasePathB",
+                            "$alias": "stackB.fs"
+                        }
+                    }, proto2),
+                    "stackA.entity": EXPECTATIONS["01-EntityImplementation"]({
+                        "_entity": "01-EntityImplementation/entity",
+                        "config": {
+                            "entity": "default",
+                            "path": "cacheBasePathA",
+                            "namespaceFromStackProto": "stackA",
+                            "fromStack": "A",
+                            "our1": "override1",
+                            "$alias": "stackA.entity"
+                        }
+                    }, proto1),
+                    "stackB.entity": EXPECTATIONS["01-EntityImplementation"]({
+                        "_entity": "01-EntityImplementation/entity",
+                        "config": {
+                            "entity": "default",
+                            "path": "cacheBasePathB",
+                            "namespaceFromStackProto": "stackB",
+                            "fromStack": "B",
+                            "our2": "override2",
+                            "$alias": "stackB.entity"
+                        }
+                    }, proto1)
                 }
             });
 

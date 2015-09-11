@@ -1,0 +1,9 @@
+{
+    "@entity": {
+        "${{ARG.namespace}}.entity": {
+            "${{ARG.namespace}}.fs.path()->path": {
+            },
+            "namespaceFromStackProto": "{{ARG.namespace}}"
+        }
+    }
+}

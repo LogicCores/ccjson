@@ -17,7 +17,10 @@
             "ourBasePathInSubMappings": "{{__DIRNAME__}}",
             "myvar": "{{ENV.MY_ENV_VAR}}",
             "myvarFromInst1": "value:{{$inst1/myvar}}:local:{{$./myvar}}",
-            "myobjFromInst1": "{{$inst1/myobj}}"
+            "myobjFromInst1": "{{$inst1/myobj}}",
+            "andAgain": {
+                "myobjFromInst1nested": "{{$inst1/myobj}}"
+            }
         }
     }
 }

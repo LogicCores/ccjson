@@ -1,0 +1,17 @@
+{
+    "@": {
+        "$": [
+            "./stack.proto.ccjson"
+        ]
+    },
+    "@fs": {
+        "${{ARG.namespace}}.fs": {
+            "basePath": "cacheBasePathB"
+        }
+    },
+    "@entity": {
+        "${{ARG.namespace}}.entity": {
+            "fromStack": "B"
+        }
+    }
+}

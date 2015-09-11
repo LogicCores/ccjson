@@ -52,9 +52,10 @@ exports.forLib = function (LIB) {
 
         ccjson.parseFile = function (path, options) {
 
-            function parseFile (path, parseOptions, callingEntities) {
+            function parseFile (path, parseOptions, callingEntities, callingArgs) {
 
                 callingEntities = callingEntities || [];
+                callingArgs = callingArgs || {};
 
         //console.log("\n\n---------------------------------------------------");
         //console.log("PARSE CJSON FILE:", path);
@@ -86,18 +87,8 @@ exports.forLib = function (LIB) {
                     return new LIB.Promise(function (resolve, reject) {
         
                         try {
-                            
-                            // Merge args from calling entities
-                            var callingArgs = {};
-                            var ourCallingEntities = [].concat(callingEntities);
-                            ourCallingEntities.reverse();
-                            ourCallingEntities.forEach(function (callingEntity) {
-                                callingEntity.inheritedImplementations.forEach(function (impl) {
-                                    LIB._.merge(callingArgs, impl.args);
-                                });
-                            });
 
-                            var config = new Config(path, parseOptions, callingEntities);
+                            var config = new Config(path, parseOptions, callingEntities, callingArgs);
         
                             var stream = CLARINET.createStream({});
             
@@ -133,7 +124,7 @@ exports.forLib = function (LIB) {
 
 //console.log("  ... draining token", type, value, current.section);
 
-        //console.log("drainOnStart", drainOnStart);        
+//console.log("drainOnStart", drainOnStart);        
                                         var m = null;
                                         // 02-EntityMapping
                                         if (
@@ -177,7 +168,22 @@ exports.forLib = function (LIB) {
                                             });
                                         } else
                                         if (
-                                            current.drainCount === 0 &&
+                                            (
+                                                current.drainCount === 0 ||
+                                                (
+                                                    drainOnStart.drain.assembler &&
+                                                    drainOnStart.drain.assembler.hasEnded()
+                                                )
+                                            ) &&
+                                            current.section === "instance" &&
+                                            type === "closeobject"
+                                        ) {
+                                            current.section = "entity";
+                                            current.drainCount = current.drains.pop()[1];
+                                        } else
+                                        if (
+                                            drainOnStart.drain.assembler &&
+                                            drainOnStart.drain.assembler.hasEnded() &&
                                             current.section === "instance" &&
                                             type === "closeobject"
                                         ) {
@@ -292,7 +298,10 @@ exports.forLib = function (LIB) {
                                             current.section === null ||
                                             current.section === "entity"
                                         ) &&
-                                        type === "key" &&
+                                        (
+                                            type === "key" ||
+                                            type === "openobject"
+                                        ) &&
                                         /^@/.test(value)
                                     ) {
                                         current.section = "entity";
@@ -368,7 +377,7 @@ exports.forLib = function (LIB) {
                                     
                                     
                                     {
-            
+
 //console.log("  **** UNHANDLED TOKEN", type, value, current.section);
                                     }
             
@@ -586,6 +595,10 @@ exports.forLib = function (LIB) {
                     currentPointer = pointerHistory.pop();
                 });
                 
+                self.hasEnded = function () {
+                    return (pointerHistory.length === 0);
+                }
+                
         
                 self.assemble = function (overrides) {
                     overrides = overrides || [];
@@ -616,7 +629,7 @@ exports.forLib = function (LIB) {
             ConfigObjectAssembler.prototype = Object.create(EVENTS.EventEmitter.prototype);
         
             
-            var Config = function (path, parseOptions, callingEntities) {
+            var Config = function (path, parseOptions, callingEntities, callingArgs) {
                 var self = this;
         
                 var entity = {
@@ -640,7 +653,15 @@ exports.forLib = function (LIB) {
                         drain: entity.implementation
                     };
                 }
-        
+                
+                function makeCallingArgsForInheritedConfigs (overrides) {
+                    // Merge args from calling entities
+                    var args = {};
+                    LIB._.merge(args, LIB._.cloneDeep(overrides));
+                    LIB._.merge(args, LIB._.cloneDeep(callingArgs));
+                    return args;
+                }
+
                 self.registerInheritedEntityImplementation = function (baseConfigPath, path) {
                     
                     function normalizePath (path) {
@@ -649,7 +670,12 @@ exports.forLib = function (LIB) {
                     
                     if (path) {
                         entity.inheritedImplementations.push({
-                            impl: parseFile(normalizePath(path), parseOptions, callingEntities.concat(entity)),
+                            impl: parseFile(
+                                normalizePath(path),
+                                parseOptions,
+                                [].concat(callingEntities).concat(entity),
+                                makeCallingArgsForInheritedConfigs()
+                            ),
                             args: {}
                         });
                     } else {
@@ -666,7 +692,12 @@ exports.forLib = function (LIB) {
                         info.assembler.on("end", function () {
                             info.impl = info.assembler.assemble().then(function (config) {
                                 info.args = config[1];
-                                return parseFile(normalizePath(config[0]), parseOptions, callingEntities.concat(entity));
+                                return parseFile(
+                                    normalizePath(config[0]),
+                                    parseOptions,
+                                    [].concat(callingEntities).concat(entity),
+                                    makeCallingArgsForInheritedConfigs(info.args)
+                                );
                             });
                         });
                         entity.inheritedImplementations.push(info);
@@ -678,6 +709,7 @@ exports.forLib = function (LIB) {
                 }
         
                 self.registerEntityMappingDeclaration = function (alias, path) {
+//console.log("registerEntityMappingDeclaration", alias);
                     entity.mappings[alias] = {
                         _type: "entity-mapping",
                         assembler: new ConfigObjectAssembler(),
@@ -687,14 +719,19 @@ exports.forLib = function (LIB) {
                     return {
                         _type: "entity-mapping",
                         onImplementation: function (path) {
-                            entity.mappings[alias].impl = parseFile(path, parseOptions, callingEntities.concat(entity));
+                            entity.mappings[alias].impl = parseFile(
+                                path,
+                                parseOptions,
+                                [].concat(callingEntities).concat(entity),
+                                makeCallingArgsForInheritedConfigs()
+                            );
                         },
                         drain: entity.mappings[alias]
                     };
                 }
         
                 self.registerEntityInstanceDeclaration = function (entityAlias, instanceAlias) {
-        
+//console.log("registerEntityInstanceDeclaration", entityAlias, instanceAlias);
                     var drain = {
                         _type: "entity-instance-config",
                         assembler: new ConfigObjectAssembler()
@@ -777,20 +814,14 @@ exports.forLib = function (LIB) {
                                     return layer.assembler.assemble().then(function (config) {
 
                                         function resolveVariables (lookupConfig, layerConfig) {
-        
+
                                             function fetchVariable (config, info) {
                                                 var targetString = info.value;
                                                 return LIB.Promise.all(info.meta.map(function (meta) {
                                                     return LIB.Promise.try(function () {
                                                         if (meta.type === "instance-variable-selector") {
                                                             return getEntityInstance(meta.instanceAlias).then(function (instance) {
-                                                                return instance.getAt(
-                                                                    LIB.path.join(
-                                                                        info.path.join("/"),
-                                                                        "..",
-                                                                        meta.selector.join("/")
-                                                                    ).split("/")
-                                                                );
+                                                                return instance.getAt(meta.selector);
                                                             });
                                                         } else
                                                         if (meta.type === "local-variable-selector") {
@@ -854,7 +885,6 @@ exports.forLib = function (LIB) {
                                                 var instanceAliasParts = layer.aspectInstanceAlias.split(".");
                                                 var instanceAspectMethod = instanceAliasParts.pop();
                                                 var instanceAspectAlias = instanceAliasParts.join(".");
-
                                                 var instance = entity.instances[instanceAspectAlias];
                                                 if (!instance) {
                                                     callingEntities.forEach(function (callingEntity) {
@@ -1031,7 +1061,8 @@ exports.forLib = function (LIB) {
                                             if (impl) {
                                                 // TODO: Implement object inheritance if there are more
                                                 //       than one implementation.
-                                                throw new Error("NYI: Multiple entity implementations");
+                                                console.error("configOverrides", configOverrides);
+                                                throw new Error("NYI: Multiple entity implementations (requested for entityAlias: " + alias + ")");
                                             }
                                             impl = override.impl;
                                         }
@@ -1131,9 +1162,9 @@ exports.forLib = function (LIB) {
             }
 
             return parseFile(path, options || {}).then(function (config) {
-    
+
                 return config.flattenExtends().then(function () {
-    
+
                     return config.assemble();
                 });
             });
