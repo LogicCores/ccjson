@@ -23,6 +23,7 @@ var TESTS = {
     "08": true,
     "09": true,
     "10": true,
+    "11": true,
     "99.01": true,
     "99.02": true
 };
@@ -614,6 +615,70 @@ describe('ccjson', function() {
                 }
             });
 
+            return done();
+        }).catch(done);
+    });
+
+    if (TESTS["11"])
+    it('11-InheritedEntityImplementation', function (done) {
+        var ccjson = new CCJSON();
+        return ccjson.parseFile(
+            PATH.join(__dirname, "11-InheritedEntityImplementation/config.ccjson")
+        ).then(function (config) {
+
+//console.log("config", JSON.stringify(config.prototype, null, 4));
+
+            delete config.prototype.getInstance;
+            makeTestable("@entities", config.prototype["@entities"]);
+            makeTestable("@instances", config.prototype["@instances"]);
+            var proto = {
+                "@instances": [
+                    "entity"
+                ],
+                "@instances.order": [
+                    "entity"
+                ]
+            };
+
+//console.log("config", JSON.stringify(config.prototype, null, 4));
+
+            ASSERT.deepEqual(config.prototype, {
+                "@entities": {
+                    "entity": {
+                        "_entity": "11-InheritedEntityImplementation/entity",
+                        "config": {
+                            "default": "value",
+                            "configKey": "configValue1",
+                            "myEntityKey": "configValue1",
+                            "instanceKey": "configValue1"
+                        },
+                        "@instances": [
+                            "entity"
+                        ],
+                        "@instances.order": [
+                            "entity"
+                        ]
+                    }
+                },
+                "@instances": {
+                    "entity": {
+                        "_entity": "11-InheritedEntityImplementation/entity",
+                        "config": {
+                            "default": "value",
+                            "configKey": "configValue1",
+                            "myEntityKey": "configValue1",
+                            "instanceKey": "configValue2",
+                            "$alias": "entity"
+                        },
+                        "@instances": [
+                            "entity"
+                        ],
+                        "@instances.order": [
+                            "entity"
+                        ]
+                    }
+                }
+            });
             return done();
         }).catch(done);
     });

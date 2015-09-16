@@ -1,0 +1,15 @@
+{
+    "@": {
+        "entity": {
+            "$": "./ourEntity.ccjson",
+            "configKey": "configValue1",
+            "myEntityKey": "configValue1",
+            "instanceKey": "configValue1"
+        }
+    },
+    "@entity": {
+        "$entity": {
+            "instanceKey": "configValue2"
+        }
+    }
+}

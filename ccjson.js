@@ -646,7 +646,8 @@ exports.forLib = function (LIB) {
                         impl: new LIB.Promise(function (resolve, reject) {
                             // We load code right away but don't instanciate until later
                             return require.async(path, resolve, reject);
-                        })
+                        }),
+                        overrides: []
                     };
                     return {
                         _type: "entity-implementation",
@@ -977,7 +978,17 @@ exports.forLib = function (LIB) {
                         }
         
                         return LIB.Promise.all(layers.map(function (layer) {
-                            
+
+                            function mergeImplementations () {
+                                return LIB.Promise.try(function () {
+                                    if (!entity.implementation) {
+                                        entity.implementation = layer.implementation;
+                                        return;
+                                    }
+                                    entity.implementation.overrides.push(layer.implementation);
+                                });
+                            }
+
                             function mergeMappings () {
                                 return LIB.Promise.all(Object.keys(layer.mappings).map(function (mappingAlias) {
                                     if (!entity.mappings[mappingAlias]) {
@@ -1002,11 +1013,26 @@ exports.forLib = function (LIB) {
                                 }));
                             }
                             
-                            return mergeMappings().then(function () {
-                                return mergeInstances();
+                            return mergeImplementations().then(function () {
+                                return mergeMappings().then(function () {
+                                    return mergeInstances();
+                                });
                             });
                         })).then(function  () {
-                            return entity;
+                            
+                            function flattenMappings () {
+                                return LIB.Promise.all(Object.keys(entity.mappings).map(function (mappingAlias) {
+                                    if (!entity.mappings[mappingAlias].impl) return;
+                                    return entity.mappings[mappingAlias].impl.then(function (config) {
+                                        return config.flattenExtends();
+                                    });
+                                }));
+                            }
+
+                            return flattenMappings().then(function () {
+
+                                return entity;
+                            });
                         });
                     });
                 }
