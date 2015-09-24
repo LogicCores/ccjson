@@ -645,7 +645,10 @@ exports.forLib = function (LIB) {
                         assembler: new ConfigObjectAssembler(),
                         impl: new LIB.Promise(function (resolve, reject) {
                             // We load code right away but don't instanciate until later
-                            return require.async(path, resolve, reject);
+                            return require.async(path, resolve, function (err) {
+                                console.error("Error loading '" + path + "'");
+                                return reject(err);
+                            });
                         }),
                         overrides: []
                     };
@@ -1155,10 +1158,19 @@ exports.forLib = function (LIB) {
                                 configOverrides["$alias"] = alias;
 
                                 var instance = new entityClass(configOverrides);
+                                
+                                function finalize (instance) {
+                                    instances[alias] = instance;
+                                    instancesByEntity[entityAlias].instances[alias] = instance;
+                                    return instance;
+                                }
 
-                                instances[alias] = instance;
-                                instancesByEntity[entityAlias].instances[alias] = instance;
-                                return instance;
+                                if (typeof instance.then === "function") {
+                                    return instance.then(function (instance) {
+                                        return finalize(instance);
+                                    });
+                                }
+                                return finalize(instance);
                             });
                         })).then(function () {
                             return instances;
