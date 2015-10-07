@@ -50,6 +50,21 @@ exports.forLib = function (LIB) {
             });
         }
 
+        var entityImplementations = {};
+        function loadEntityImplementation (path) {
+            if (entityImplementations[path]) {
+                return entityImplementations[path];
+            }
+            return (entityImplementations[path] = new LIB.Promise(function (resolve, reject) {
+                return require.async(path, resolve, function (err) {
+                    console.error("Error loading '" + path + "'");
+                    return reject(err);
+                });
+            }).then(function (impl) {
+                return impl.forLib.call(ccjson, LIB);
+            }));
+        }
+
         ccjson.parseFile = function (path, options) {
 
             function parseFile (path, parseOptions, callingEntities, callingArgs) {
@@ -643,13 +658,7 @@ exports.forLib = function (LIB) {
                     entity.implementation = {
                         _type: "entity-implementation",
                         assembler: new ConfigObjectAssembler(),
-                        impl: new LIB.Promise(function (resolve, reject) {
-                            // We load code right away but don't instanciate until later
-                            return require.async(path, resolve, function (err) {
-                                console.error("Error loading '" + path + "'");
-                                return reject(err);
-                            });
-                        }),
+                        impl: loadEntityImplementation(path),
                         overrides: []
                     };
                     return {
@@ -1060,12 +1069,10 @@ exports.forLib = function (LIB) {
                         }
                         return entity.implementation.assembler.assemble().then(function (config) {
         
-                            return entity.implementation.impl.then(function (factory) {
-                                return factory.forLib.call(ccjson, LIB).then(function (exports) {
-                                    var defaultConfig = LIB._.cloneDeep(config);
-                                    LIB._.assign(defaultConfig, overrides || {});
-                                    return exports.forConfig(defaultConfig);
-                                });
+                            return entity.implementation.impl.then(function (exports) {
+                                var defaultConfig = LIB._.cloneDeep(config);
+                                LIB._.assign(defaultConfig, overrides || {});
+                                return exports.forConfig(defaultConfig);
                             });
                         });
                     }
