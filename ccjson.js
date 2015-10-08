@@ -93,11 +93,9 @@ exports.forLib = function (LIB) {
                                 parseOptions.on &&
                                 typeof parseOptions.on.fileNotFound === "function"
                             ) {
-                                try {
-                                    return parseOptions.on.fileNotFound(path).then(resolve, reject);
-                                } catch (err) {
-                                    return reject(err);
-                                }
+                                return LIB.Promise.try(function () {
+                                    return parseOptions.on.fileNotFound(path, optional);
+                                }).then(resolve, reject);
                             }
                             if (optional) {
                                 return resolve(null);
