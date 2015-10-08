@@ -78,6 +78,13 @@ exports.forLib = function (LIB) {
         
                 function ensurePath (path) {
                     return new LIB.Promise(function (resolve, reject) {
+
+                        // TODO: We need a '!' safe path join that moves the '!' to the front if a segment contains it.
+                        var optional = /!/.test(path);
+                        if (optional) {
+                            path = LIB.path.join(path.replace(/!/, ""));
+                        }
+
                         return LIB.fs.exists(path, function (exists) {
                             if (exists) {
                                 return resolve(path);
@@ -92,12 +99,19 @@ exports.forLib = function (LIB) {
                                     return reject(err);
                                 }
                             }
+                            if (optional) {
+                                return resolve(null);
+                            }
                             return reject(new Error("File not found '" + path + "'!"));
                         });
                     });
                 }
                 
                 return ensurePath(path).then(function (path) {
+                    
+                    if (!path) {
+                        return null;
+                    }
         
                     return new LIB.Promise(function (resolve, reject) {
         
@@ -981,6 +995,7 @@ exports.forLib = function (LIB) {
                     }
                     return LIB.Promise.all(entity.inheritedImplementations.map(function (config) {
                         return config.impl.then(function (config) {
+                            if (!config) return;
                             return config.flattenExtends(layers);
                         });
                     })).then(function () {

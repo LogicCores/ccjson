@@ -24,6 +24,7 @@ var TESTS = {
     "09": true,
     "10": true,
     "11": true,
+    "12": true,
     "99.01": true,
     "99.02": true
 };
@@ -679,6 +680,17 @@ describe('ccjson', function() {
                     }
                 }
             });
+            return done();
+        }).catch(done);
+    });
+
+    if (TESTS["12"])
+    it('12-OptionalInheritance', function (done) {
+        var ccjson = new CCJSON();
+        return ccjson.parseFile(
+            PATH.join(__dirname, "12-OptionalInheritance/config.ccjson")
+        ).then(function (config) {
+            ASSERT.deepEqual(JSON.stringify(config.prototype), "{}");
             return done();
         }).catch(done);
     });
