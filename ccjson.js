@@ -1111,7 +1111,9 @@ exports.forLib = function (LIB) {
                                                 // TODO: Implement object inheritance if there are more
                                                 //       than one implementation.
                                                 console.error("configOverrides", configOverrides);
-                                                throw new Error("NYI: Multiple entity implementations (requested for entityAlias: " + alias + ")");
+// NOTE: We assume the implementations are the same.
+// TODO: Verify that the implementations are the same.
+//                                                throw new Error("NYI: Multiple entity implementations (requested for entityAlias: " + alias + ")");
                                             }
                                             impl = override.impl;
                                         }
