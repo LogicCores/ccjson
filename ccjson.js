@@ -50,6 +50,14 @@ exports.forLib = function (LIB) {
             });
         }
 
+        var entityMappings = {};
+        function getEntityMappingForAlias (alias) {
+            if (!entityMappings[alias]) {
+                entityMappings[alias] = LIB.Promise.defer();
+            }
+            return entityMappings[alias].promise;
+        }
+
         var entityImplementations = {};
         function loadEntityImplementation (path) {
             if (entityImplementations[path]) {
@@ -67,10 +75,16 @@ exports.forLib = function (LIB) {
 
         ccjson.parseFile = function (path, options) {
 
-            function parseFile (path, parseOptions, callingEntities, callingArgs) {
+            function parseFile (path, parseOptions, callingEntities, callingArgs, depth) {
+                
+                depth = depth || 0;
+                var indent = "";
+                for (var i=0;i<depth;i++) indent += "  ";
 
                 callingEntities = callingEntities || [];
                 callingArgs = callingArgs || {};
+
+//console.log(indent + "PARSE FILE 1", path, "NS:", callingArgs.namespace);
 
         //console.log("\n\n---------------------------------------------------");
         //console.log("PARSE CJSON FILE:", path);
@@ -115,7 +129,7 @@ exports.forLib = function (LIB) {
         
                         try {
 
-                            var config = new Config(path, parseOptions, callingEntities, callingArgs);
+                            var config = new Config(path, parseOptions, callingEntities, callingArgs, depth);
         
                             var stream = CLARINET.createStream({});
             
@@ -656,7 +670,7 @@ exports.forLib = function (LIB) {
             ConfigObjectAssembler.prototype = Object.create(EVENTS.EventEmitter.prototype);
         
             
-            var Config = function (path, parseOptions, callingEntities, callingArgs) {
+            var Config = function (path, parseOptions, callingEntities, callingArgs, depth) {
                 var self = this;
         
                 var entity = {
@@ -699,7 +713,8 @@ exports.forLib = function (LIB) {
                                 normalizePath(path),
                                 parseOptions,
                                 [].concat(callingEntities).concat(entity),
-                                makeCallingArgsForInheritedConfigs()
+                                makeCallingArgsForInheritedConfigs(),
+                                depth + 1
                             ),
                             args: {}
                         });
@@ -721,7 +736,8 @@ exports.forLib = function (LIB) {
                                     normalizePath(config[0]),
                                     parseOptions,
                                     [].concat(callingEntities).concat(entity),
-                                    makeCallingArgsForInheritedConfigs(info.args)
+                                    makeCallingArgsForInheritedConfigs(info.args),
+                                    depth + 1
                                 );
                             });
                         });
@@ -748,7 +764,8 @@ exports.forLib = function (LIB) {
                                 path,
                                 parseOptions,
                                 [].concat(callingEntities).concat(entity),
-                                makeCallingArgsForInheritedConfigs()
+                                makeCallingArgsForInheritedConfigs(),
+                                depth + 1
                             );
                         },
                         drain: entity.mappings[alias]
@@ -759,6 +776,7 @@ exports.forLib = function (LIB) {
 //console.log("registerEntityInstanceDeclaration", entityAlias, instanceAlias);
                     var drain = {
                         _type: "entity-instance-config",
+                        _path: path,
                         assembler: new ConfigObjectAssembler()
                     };
                     entity.instances[instanceAlias] = {
@@ -767,17 +785,19 @@ exports.forLib = function (LIB) {
         
                             function gatherLayers (entity) {
                                 var layers = [];
-        
+
                                 entity.overrides.forEach(function (override) {
                                     if (override.configLayers) {
                                         layers = layers.concat(gatherLayers(override).map(function (layer) {
                                             layer._type = "override-config-layer";
+                                            layer._path = override._path;
                                             return layer;
                                         }));
                                     }
                                     if (override.assembler) {
                                         layers.push({
                                             _type: "override-assembler",
+                                            _path: override._path,
                                             assembler: override.assembler
                                         });
                                     }
@@ -786,6 +806,7 @@ exports.forLib = function (LIB) {
                                 layers = layers.concat(entity.configLayers.map(function (layer) {
                                     return {
                                         _type: "entity-config-layer",
+                                        _path: layer._path,
                                         aspectInstanceAlias: layer.aspectInstanceAlias || null,
                                         mountPath: layer.mountPath || null,
                                         assembler: layer.assembler
@@ -796,7 +817,7 @@ exports.forLib = function (LIB) {
                             }
                             var layers = gatherLayers(entity.instances[instanceAlias]);
                             var mergedConfig = {};
-        
+//console.log("layers", layers);
                             var done = LIB.Promise.resolve();
                             layers.forEach(function (layer, layerIndex) {
                                 done = done.then(function () {
@@ -923,7 +944,11 @@ exports.forLib = function (LIB) {
 
                                                 return getEntityInstance(instanceAspectAlias).then(function (instance) {
                                                     if (typeof instance.AspectInstance !== "function") {
-                                                        throw new Error("Aspect instance for '" + instanceAspectAlias + "' cannot me instanciated as entity does not implement 'AspectInstance' factory method");
+                                                        console.error("instance", instance);
+                                                        console.error("path", path);
+                                                        console.error("entityAlias", entityAlias);
+                                                        console.error("instanceAlias", instanceAlias);
+                                                        throw new Error("Aspect instance for '" + instanceAspectAlias + "' cannot be instanciated as entity does not implement 'AspectInstance' factory method");
                                                     }
                                                     try {
                                                         return instance.AspectInstance(config).then(function (aspectInstance) {
@@ -1049,6 +1074,9 @@ exports.forLib = function (LIB) {
                                 return LIB.Promise.all(Object.keys(entity.mappings).map(function (mappingAlias) {
                                     if (!entity.mappings[mappingAlias].impl) return;
                                     return entity.mappings[mappingAlias].impl.then(function (config) {
+
+//console.log("flattenMappings", mappingAlias, config);
+
                                         return config.flattenExtends();
                                     });
                                 }));
@@ -1072,6 +1100,7 @@ exports.forLib = function (LIB) {
                         if (!entity.implementation) {
                             var Entity = function (instanceConfig) {
                             }
+                            Entity._noImpl = true;
                             Entity.prototype.getInstance = function (instanceAlias) {
                                 if (!this["@instances"][instanceAlias]) {
                                     throw new Error("Instance with alias '" + instanceAlias + "' not registered!");
@@ -1091,8 +1120,8 @@ exports.forLib = function (LIB) {
                     }
         
                     function instanciateEntityMappings () {
-                        var mappings = {};
 
+//console.log("instanciateEntityMappings", depth);
                         return LIB.Promise.all(Object.keys(entity.mappings).map(function (alias) {
 
                             return entity.mappings[alias].assembler.assemble(
@@ -1103,45 +1132,72 @@ exports.forLib = function (LIB) {
                                 })
                             ).then(function (configOverrides) {
         
-                                function getImpl () {
-                                    var impl = entity.mappings[alias].impl;
+                                function getImpls () {
+                                    var impls = [];
+                                    if (entity.mappings[alias].impl) {
+                                        impls.push(entity.mappings[alias].impl);
+                                    }
+//console.log(alias, "ORIGINAL IMPL", impl);
                                     entity.mappings[alias].overrides.forEach(function (override) {
                                         if (override.impl) {
-                                            if (impl) {
+//                                            if (impl) {
                                                 // TODO: Implement object inheritance if there are more
                                                 //       than one implementation.
-                                                console.error("configOverrides", configOverrides);
+//                                                console.error("configOverrides", configOverrides);
 // NOTE: We assume the implementations are the same.
 // TODO: Verify that the implementations are the same.
 //                                                throw new Error("NYI: Multiple entity implementations (requested for entityAlias: " + alias + ")");
-                                            }
-                                            impl = override.impl;
+//                                            }
+                                            impls.push(override.impl);
+//console.log(alias, "OVERRIDDEN IMPL", impl);
                                         }
                                     });
-                                    return impl;
+                                    return impls;
+                                }
+                                
+                                
+                                function setEntityMapping (alias, config) {
+//console.log("setEntityMapping", alias, config, path, depth, configOverrides);                                        
+
+                                    if (entityMappings[alias]) {
+
+//console.log("entityMappings[alias]", entityMappings[alias]);                                        
+                                    } else {
+//console.log("entityMappings[alias]", alias, entityMappings[alias]);                                        
+                                        entityMappings[alias] = LIB.Promise.defer();
+                                        entityMappings[alias].resolve(config);
+                                    }
                                 }
 
-                                var impl = getImpl();
-                                if (impl) {
-                                    return impl.then(function (config) {
-        
-                                        return config.assemble(entity, configOverrides, {
-                                            entityAlias: alias
-                                        }).then(function (config) {
-                                            mappings[alias] = config;
+                                var impls = getImpls();
+                                if (impls.length > 0) {
+                                    return LIB.Promise.all(impls.map(function (impl) {
+
+                                        return impl.then(function (config) {
+
+
+                                            return config.assemble(entity, configOverrides, {
+                                                entityAlias: alias
+                                            }).then(function (config) {
+
+                                                if (config._noImpl) return;
+//console.log("config", alias, config);
+
+                                                setEntityMapping(alias, config);
+                                            });
                                         });
-                                    });
+                                    }));
                                 } else {
-                                    mappings[alias] = configOverrides;
+                                    setEntityMapping(alias, configOverrides);
                                 }
                             });
                         })).then(function () {
-        
-                            return mappings;
+//console.log("mappings", depth, entityMappings);
+                            return entityMappings;
                         });
                     }
                     
-                    function instanciateEntityInstances (mappings) {
+                    function instanciateEntityInstances () {
 
                         var instances = {};
                         var instancesByEntity = {};
@@ -1169,30 +1225,34 @@ exports.forLib = function (LIB) {
 
                             return instancePromises[alias] = entity.instances[alias].mergeLayers(getEntityInstance).then(function (configOverrides) {
 
-                                var entityClass = mappings[entityAlias];
-                                if (!entityClass) {
-                                    throw new Error("Entity '" + entity.instances[alias].entityAlias + "' used for instance '" + alias + "' not mapped!");
-                                }
+                                return getEntityMappingForAlias(entityAlias).then(function (entityClass) {
 
-                                entityClass.prototype["@instances"] = instancesByEntity[entityAlias].instances;
-                                entityClass.prototype["@instances.order"] = instancesByEntity[entityAlias].order;
+//console.log("mappings", depth, entityAlias, entityClass);
 
-                                configOverrides["$alias"] = alias;
-
-                                var instance = new entityClass(configOverrides);
-                                
-                                function finalize (instance) {
-                                    instances[alias] = instance;
-                                    instancesByEntity[entityAlias].instances[alias] = instance;
-                                    return instance;
-                                }
-
-                                if (typeof instance.then === "function") {
-                                    return instance.then(function (instance) {
-                                        return finalize(instance);
-                                    });
-                                }
-                                return finalize(instance);
+                                    if (!entityClass) {
+                                        throw new Error("Entity '" + entity.instances[alias].entityAlias + "' used for instance '" + alias + "' not mapped!");
+                                    }
+    
+                                    entityClass.prototype["@instances"] = instancesByEntity[entityAlias].instances;
+                                    entityClass.prototype["@instances.order"] = instancesByEntity[entityAlias].order;
+    
+                                    configOverrides["$alias"] = alias;
+    
+                                    var instance = new entityClass(configOverrides);
+                                    
+                                    function finalize (instance) {
+                                        instances[alias] = instance;
+                                        instancesByEntity[entityAlias].instances[alias] = instance;
+                                        return instance;
+                                    }
+    
+                                    if (typeof instance.then === "function") {
+                                        return instance.then(function (instance) {
+                                            return finalize(instance);
+                                        });
+                                    }
+                                    return finalize(instance);
+                                });
                             });
                         })).then(function () {
                             return instances;
@@ -1206,10 +1266,10 @@ exports.forLib = function (LIB) {
                             if (Object.keys(mappings).length) {
                                 impl.prototype["@entities"] = mappings;
                             }
-                            
+
 //console.log("requestingEntity", requestingEntity);
 
-                            return instanciateEntityInstances(impl.prototype["@entities"] || {}).then(function (instances) {
+                            return instanciateEntityInstances().then(function (instances) {
                                 if (Object.keys(instances).length > 0) {
                                     impl.prototype["@instances"] = instances;
                                 }

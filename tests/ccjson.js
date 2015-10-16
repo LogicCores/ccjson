@@ -67,7 +67,7 @@ describe('ccjson', function() {
     function makeTestable (property, obj) {
         if (property === "@entities") {
             Object.keys(obj).forEach(function (name) {
-                obj[name] = obj[name].prototype;
+                obj[name] = obj[name].promise._settledValue.prototype;
                 if (obj[name]["@instances"]) {
                     obj[name]["@instances"] = Object.keys(obj[name]["@instances"]);
                 }
@@ -840,8 +840,18 @@ describe('ccjson', function() {
                     "stackB.fs"
                 ]
             }
+            var proto3 = {
+                "@instances": [
+                    "stackA.entityInherited",
+                    "stackB.entityInherited"
+                ],
+                "@instances.order": [
+                    "stackA.entityInherited",
+                    "stackB.entityInherited"
+                ]
+            }
 
-//console.log("config", JSON.stringify(config.prototype, null, 4));
+//console.log("config 2", JSON.stringify(config.prototype, null, 4));
 
             ASSERT.deepEqual(config.prototype, {
                 "@entities": {
@@ -855,9 +865,31 @@ describe('ccjson', function() {
                         "_entity": "99-ZeroSystem-02/fs",
                         "config": {
                         }
-                    }, proto2)
+                    }, proto2),
+                    "entityInherited": LIB._.assign({
+                        "_entity": "11-InheritedEntityImplementation/entity",
+                        "config": {
+                            "default": "value"
+                        }
+                    }, proto3)
                 },
                 "@instances": {
+                    "stackA.entityInherited": LIB._.assign({
+                        "_entity": "11-InheritedEntityImplementation/entity",
+                        "config": {
+                            "default": "value",
+                            "instanceKey": "configValue2",
+                            "$alias": "stackA.entityInherited"
+                        }
+                    }, proto3),
+                    "stackB.entityInherited": LIB._.assign({
+                        "_entity": "11-InheritedEntityImplementation/entity",
+                        "config": {
+                            "default": "value",
+                            "instanceKey": "configValue2",
+                            "$alias": "stackB.entityInherited"
+                        }
+                    }, proto3),
                     "stackA.fs": LIB._.assign({
                         "_entity": "99-ZeroSystem-02/fs",
                         "config": {
@@ -878,6 +910,7 @@ describe('ccjson', function() {
                             "entity": "default",
                             "path": "cacheBasePathA",
                             "namespaceFromStackProto": "stackA",
+                            "signed": "signed",
                             "fromStack": "A",
                             "our1": "override1",
                             "$alias": "stackA.entity"
@@ -889,6 +922,7 @@ describe('ccjson', function() {
                             "entity": "default",
                             "path": "cacheBasePathB",
                             "namespaceFromStackProto": "stackB",
+                            "signed": "signed",
                             "fromStack": "B",
                             "our2": "override2",
                             "$alias": "stackB.entity"

@@ -15,7 +15,7 @@ exports.forLib = function (LIB) {
                     }));
                     return obj;
                 }
-/*
+
                 self.AspectInstance = function (aspectConfig) {
                     return LIB.Promise.resolve({
                         sign: function () {
@@ -23,7 +23,7 @@ exports.forLib = function (LIB) {
                         }
                     });
                 }
-*/
+
             }
             Entity.prototype._entity = "11-InheritedEntityImplementation/entity";
             Entity.prototype.config = defaultConfig;

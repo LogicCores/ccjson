@@ -1,7 +1,6 @@
 {
     "@": {
         "$": [
-            "./stack.ccjson",
             [
                 "./stackA.ccjson",
                 {

@@ -1,9 +1,20 @@
 {
+    "@": {
+        "$": [
+            "./stack.mixin.ccjson"
+        ]
+    },
+    "@entityInherited": {
+        "${{ARG.namespace}}.entityInherited": {
+            "instanceKey": "configValue2"
+        }
+    },
     "@entity": {
         "${{ARG.namespace}}.entity": {
             "${{ARG.namespace}}.fs.path()->path": {
             },
-            "namespaceFromStackProto": "{{ARG.namespace}}"
+            "namespaceFromStackProto": "{{ARG.namespace}}",
+            "${{ARG.namespace}}.entityInherited.sign()->signed": {}
         }
     }
 }

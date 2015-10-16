@@ -6,6 +6,9 @@
         },
         "fs": {
             "$": "./fs.impl.ccjson"
+        },
+        "entityInherited": {
+            "$": "../11-InheritedEntityImplementation/ourEntity.ccjson"
         }
     }
 }
