@@ -955,7 +955,9 @@ exports.forLib = function (LIB) {
                                                             if (typeof aspectInstance[instanceAspectMethod] !== "function") {
                                                                 throw new Error("Aspect instance for '" + instanceAspectAlias + "' does not implement method '" + instanceAspectMethod + "'");
                                                             }
-                                                            return aspectInstance[instanceAspectMethod]().then(function (aspectConfig) {
+                                                            return LIB.Promise.try(function () {
+                                                                return aspectInstance[instanceAspectMethod]();
+                                                            }).then(function (aspectConfig) {
                                                                 mergeConfig(mergedConfig, aspectConfig);
                                                                 return;
                                                             });
