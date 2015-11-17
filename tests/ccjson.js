@@ -26,7 +26,8 @@ var TESTS = {
     "11": true,
     "12": true,
     "99.01": true,
-    "99.02": true
+    "99.02": true,
+    "99.03": true
 };
 
 
@@ -935,4 +936,55 @@ describe('ccjson', function() {
         }).catch(done);
     });
 
+    if (TESTS["99.03"])
+    it('99-ZeroSystem-03', function (done) {
+        var ccjson = new CCJSON();
+        return ccjson.parseFile(
+            PATH.join(__dirname, "99-ZeroSystem-03/boot.ccjson")
+        ).then(function (config) {
+
+//console.log("config", JSON.stringify(config.prototype, null, 4));
+
+            delete config.prototype.getInstance;
+            makeTestable("@entities", config.prototype["@entities"]);
+            makeTestable("@instances", config.prototype["@instances"]);
+            var proto1 = {
+                "@instances": [
+                    "stackA.entity",
+                    "stackB.entity"
+                ],
+                "@instances.order": [
+                    "stackA.entity",
+                    "stackB.entity"
+                ]
+            };
+
+//console.log("config 2", JSON.stringify(config.prototype, null, 4));
+
+            ASSERT.deepEqual(config.prototype, {
+                "@entities": {
+                    "entity": LIB._.assign({
+                        "config": {
+                        }
+                    }, proto1)
+                },
+                "@instances": {
+                    "stackA.entity": LIB._.assign({
+                        "config": {
+                            "deploy": "boot-target",
+                            "$alias": "stackA.entity"
+                        }
+                    }, proto1),
+                    "stackB.entity": LIB._.assign({
+                        "config": {
+                            "deploy": "boot-target",
+                            "$alias": "stackB.entity"
+                        }
+                    }, proto1)
+                }
+            });
+
+            return done();
+        }).catch(done);
+    });
 });

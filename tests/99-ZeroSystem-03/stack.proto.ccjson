@@ -1,0 +1,11 @@
+{
+    "@": {
+        "entity": {
+        }
+    },
+    "@entity": {
+        "${{ARG.namespace}}.entity": {
+            "deploy": "unknown"
+        }
+    }
+}

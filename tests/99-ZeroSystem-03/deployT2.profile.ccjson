@@ -1,0 +1,12 @@
+{
+    "@": {
+        "$": [
+            "./deployT1.profile.ccjson"
+        ]
+    },
+    "@entity": {
+        "${{ARG.namespace}}.entity": {
+            "deploy": "T2"
+        }
+    }
+}

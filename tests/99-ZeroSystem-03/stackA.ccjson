@@ -1,0 +1,9 @@
+{
+    "@": {
+        "$": [
+            "./boot.overlay.ccjson",
+            "./deployT1.profile.ccjson",
+            "./stack.proto.ccjson"
+        ]
+    }
+}

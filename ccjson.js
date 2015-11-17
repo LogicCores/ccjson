@@ -1190,7 +1190,26 @@ exports.forLib = function (LIB) {
                                         });
                                     }));
                                 } else {
-                                    setEntityMapping(alias, configOverrides);
+
+                                    function makeDefaultEntity (defaultConfig) {
+                                        var Entity = function (instanceConfig) {
+                                            var self = this;
+                                            self.toString = function () {
+                                                var obj = {};
+                                                LIB._.merge(obj, LIB._.cloneDeep(self.__proto__));
+                                                LIB._.merge(obj, LIB._.cloneDeep({
+                                                    config: instanceConfig
+                                                }));
+                                                return obj;
+                                            }
+                                        }
+                                        Entity._noImpl = true;
+                                        Entity.prototype.config = defaultConfig;
+                                        return Entity;
+                                    }
+
+                                    setEntityMapping(alias, makeDefaultEntity(configOverrides));
+//                                    setEntityMapping(alias, function () {});
                                 }
                             });
                         })).then(function () {
@@ -1275,9 +1294,12 @@ exports.forLib = function (LIB) {
                                 if (Object.keys(instances).length > 0) {
                                     impl.prototype["@instances"] = instances;
                                 }
-                                
-                                return impl;
+
+                                return null;
                             });
+                        }).then(function () {
+
+                            return impl;
                         });
                     });
                 }

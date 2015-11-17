@@ -1,0 +1,18 @@
+{
+    "@": {
+        "$": [
+            [
+                "./stackA.ccjson",
+                {
+                    "namespace": "stackA"
+                }
+            ],
+            [
+                "./stackB.ccjson",
+                {
+                    "namespace": "stackB"
+                }
+            ]
+        ]
+    }
+}

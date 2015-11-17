@@ -1,0 +1,7 @@
+{
+    "@entity": {
+        "${{ARG.namespace}}.entity": {
+            "deploy": "boot-target"
+        }
+    }
+}
