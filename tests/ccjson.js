@@ -696,6 +696,68 @@ describe('ccjson', function() {
         }).catch(done);
     });
 
+    if (TESTS["13"])
+    it('13-LayeredConfigInheritance', function (done) {
+        var ccjson = new CCJSON();
+        return ccjson.parseFile(
+            PATH.join(__dirname, "13-LayeredConfigInheritance/config.ccjson")
+        ).then(function (config) {
+
+//console.log("config", JSON.stringify(config.prototype, null, 4));
+
+            delete config.prototype.getInstance;
+            makeTestable("@entities", config.prototype["@entities"]);
+            makeTestable("@instances", config.prototype["@instances"]);
+            var proto1 = {
+                "@instances": [
+                    "inst1",
+                    "inst2"
+                ],
+                "@instances.order": [
+                    "inst1",
+                    "inst2"
+                ]
+            };
+
+console.log("config 2", JSON.stringify(config.prototype, null, 4));
+
+            ASSERT.deepEqual(config.prototype, {
+                "@entities": {
+                    "entity": LIB._.assign({
+                        "config": {
+                            "config1": "config.json : 1",
+                            "config2": "config.json : 1",
+                            "config3": "proto3.json",
+                            "config4": "proto4.json"
+                        }
+                    }, proto1)
+                },
+                "@instances": {
+                    "inst1": LIB._.assign({
+                        "config": {
+                            "config1": "config.json : 2",
+                            "config2": "proto3.json",
+                            "config3": "proto3.json",
+                            "config4": "proto4.json",
+                            "$alias": "inst1"
+                        }
+                    }, proto1),
+                    "inst2": LIB._.assign({
+                        "config": {
+                            "config1": "config.json : 2",
+                            "config2": "proto2.json",
+                            "config3": "proto3.json",
+                            "config4": "proto3.json",
+                            "$alias": "inst2"
+                        }
+                    }, proto1)
+                }
+            });
+
+            return done();
+        }).catch(done);
+    });
+
     if (TESTS["99.01"])
     it('99-ZeroSystem-01', function (done) {
         var ccjson = new CCJSON();
