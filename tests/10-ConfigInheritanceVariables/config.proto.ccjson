@@ -18,7 +18,10 @@
             "protoSuperEntityInstance1Key": "ProtoEntityInstance1Value"
         },
         "${{ARG.namespace}}.inst2": {
-            "protoEntityInstance2Key": "ProtoEntityInstance2Value"
+            "protoEntityInstance2Key": "ProtoEntityInstance2Value",
+            "protoEntityInstance1KeyFromInst1": "{{${{ARG.namespace}}.inst1/protoEntityInstance1Key}}",
+            "protoSuperEntityInstance1KeyFromInst1": "{{${{ARG.namespace}}.inst1/protoSuperEntityInstance1Key}}",
+            "protoSuperEntityInstance1Key2FromInst1": "{{${{ARG.namespace}}.inst1/protoSuperEntityInstance1Key2}}"
         }
     }
 }
