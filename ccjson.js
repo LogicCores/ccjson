@@ -785,7 +785,7 @@ exports.forLib = function (LIB) {
         
                             function gatherLayers (entity) {
                                 var layers = [];
-
+console.log("gather layers", entity.overrides);
                                 entity.overrides.forEach(function (override) {
                                     if (override.configLayers) {
                                         layers = layers.concat(gatherLayers(override).map(function (layer) {
@@ -817,13 +817,13 @@ exports.forLib = function (LIB) {
                             }
                             var layers = gatherLayers(entity.instances[instanceAlias]);
                             var mergedConfig = {};
-//console.log("layers", layers);
+
                             var done = LIB.Promise.resolve();
                             layers.forEach(function (layer, layerIndex) {
                                 done = done.then(function () {
-
+console.log("LAYER", layer);
                                     function mergeConfig (mergedConfig, config) {
-        
+console.log("MERGE", config, "ON TOP OF", mergedConfig);        
                                         if (
                                             layer.mountPath &&
                                             layer.mountPath !== "."
@@ -1246,6 +1246,7 @@ exports.forLib = function (LIB) {
 
                             return instancePromises[alias] = entity.instances[alias].mergeLayers(getEntityInstance).then(function (configOverrides) {
 
+console.log("configOverrides A", configOverrides);
                                 return getEntityMappingForAlias(entityAlias).then(function (entityClass) {
 
 //console.log("mappings", depth, entityAlias, entityClass);
@@ -1258,7 +1259,8 @@ exports.forLib = function (LIB) {
                                     entityClass.prototype["@instances.order"] = instancesByEntity[entityAlias].order;
     
                                     configOverrides["$alias"] = alias;
-    
+
+console.log("configOverrides", configOverrides);    
                                     var instance = new entityClass(configOverrides);
                                     
                                     function finalize (instance) {
