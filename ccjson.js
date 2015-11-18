@@ -4,7 +4,7 @@ require("require.async")(require);
 const TRAVERSE = require("traverse");
 
 exports.makeLib = function () {
-    return {
+    var api = {
         path: require("path"),
         fs: require("fs"),
         Promise: require("bluebird"),
@@ -14,7 +14,9 @@ exports.makeLib = function () {
         CJSON: {
             stringify: require("canonical-json")
         }
-    }    
+    };
+    api.Promise.promisifyAll(api.fs);
+    return api;
 }
 
 
