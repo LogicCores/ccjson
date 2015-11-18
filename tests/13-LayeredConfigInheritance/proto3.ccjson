@@ -1,8 +1,16 @@
 {
+    "@": {
+        "entity": {
+            "config3": "proto3.json",
+            "config4": "proto4.json"
+        }
+    },
     "@entity": {
         "$inst1": {
             "config1": "proto3.json",
-            "config2": "proto3.json",
+            "config2": "proto3.json"
+        },
+        "$inst2": {
             "config3": "proto3.json",
             "config4": "proto3.json"
         }

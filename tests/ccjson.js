@@ -13,7 +13,6 @@ CCJSON = CCJSON.forLib(LIB);
 
 
 var TESTS = {
-/*
     "01": true,
     "02": true,
     "03": true,
@@ -26,13 +25,9 @@ var TESTS = {
     "10": true,
     "11": true,
     "12": true,
-*/
-    "13": true,
-/*
     "99.01": true,
     "99.02": true,
     "99.03": true
-*/
 };
 
 
@@ -715,10 +710,12 @@ describe('ccjson', function() {
             makeTestable("@instances", config.prototype["@instances"]);
             var proto1 = {
                 "@instances": [
-                    "inst1"
+                    "inst1",
+                    "inst2"
                 ],
                 "@instances.order": [
-                    "inst1"
+                    "inst1",
+                    "inst2"
                 ]
             };
 
@@ -728,6 +725,10 @@ console.log("config 2", JSON.stringify(config.prototype, null, 4));
                 "@entities": {
                     "entity": LIB._.assign({
                         "config": {
+                            "config1": "config.json : 1",
+                            "config2": "config.json : 1",
+                            "config3": "proto3.json",
+                            "config4": "proto4.json"
                         }
                     }, proto1)
                 },
@@ -737,8 +738,17 @@ console.log("config 2", JSON.stringify(config.prototype, null, 4));
                             "config1": "config.json : 2",
                             "config2": "proto3.json",
                             "config3": "proto3.json",
-                            "config4": "proto3.json",
+                            "config4": "proto4.json",
                             "$alias": "inst1"
+                        }
+                    }, proto1),
+                    "inst2": LIB._.assign({
+                        "config": {
+                            "config1": "config.json : 2",
+                            "config2": "proto2.json",
+                            "config3": "proto3.json",
+                            "config4": "proto3.json",
+                            "$alias": "inst2"
                         }
                     }, proto1)
                 }
@@ -1039,5 +1049,4 @@ console.log("config 2", JSON.stringify(config.prototype, null, 4));
             return done();
         }).catch(done);
     });
-
 });
