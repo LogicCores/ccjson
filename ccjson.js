@@ -1261,7 +1261,14 @@ exports.forLib = function (LIB) {
 
                             return instancePromises[alias] = entity.instances[alias].mergeLayers(getEntityInstance).then(function (configOverrides) {
 
-                                return getEntityMappingForAlias(entityAlias).then(function (entityClass) {
+                                return getEntityMappingForAlias(entityAlias).timeout(1000).catch(LIB.Promise.TimeoutError, function (err) {
+
+                                    console.error("Got timeout while getEntityMappingForAlias('" + entityAlias + "') for instance '" + alias + "'");
+
+//console.log("path", path);
+
+                                    throw err;
+                                }).then(function (entityClass) {
 
 //console.log("mappings", depth, entityAlias, entityClass);
 

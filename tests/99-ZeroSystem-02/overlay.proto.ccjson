@@ -1,0 +1,7 @@
+{
+    "@": {
+        "fs": {
+            "default": "overlaid"
+        }
+    }
+}

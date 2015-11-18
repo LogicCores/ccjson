@@ -2,7 +2,8 @@
     "@": {
         "entity": {
             "$": "../01-EntityImplementation/entity.ccjson",
-            "entity": "default"
+            "entity": "default",
+            "entity1": "default"
         },
         "fs": {
             "$": "./fs.impl.ccjson"
