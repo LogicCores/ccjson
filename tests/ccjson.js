@@ -601,6 +601,7 @@ describe('ccjson', function() {
                             "protoSuperEntityInstance1Key": "entityInstance1Value",
                             "protoEntityInstance1Key": "entityInstance1Value",
                             "entityInstance1Key": "entityInstance1Value",
+                            "protoSuperEntityInstance1Key2": "ProtoSuperEntityInstance1Value2",
                             "$alias": "0.inst1"
                         }
                     }, proto1),
@@ -611,6 +612,9 @@ describe('ccjson', function() {
                             "protoSuperEntityInstance2Key": "ProtoSuperEntityInstance2Value:CustomValue",
                             "protoEntityInstance2Key": "ProtoEntityInstance2Value",
                             "entityInstance2Key": "entityInstance2Value",
+                            "protoEntityInstance1KeyFromInst1": "entityInstance1Value",
+                            "protoSuperEntityInstance1Key2FromInst1": "ProtoSuperEntityInstance1Value2",
+                            "protoSuperEntityInstance1KeyFromInst1": "entityInstance1Value",
                             "$alias": "0.inst2"
                         }
                     }, proto1)

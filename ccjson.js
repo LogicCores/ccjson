@@ -91,13 +91,14 @@ exports.forLib = function (LIB) {
         //console.log("---------------------------------------------------");
         
                 function ensurePath (path) {
-                    return new LIB.Promise(function (resolve, reject) {
 
-                        // TODO: We need a '!' safe path join that moves the '!' to the front if a segment contains it.
-                        var optional = /!/.test(path);
-                        if (optional) {
-                            path = LIB.path.join(path.replace(/!/, ""));
-                        }
+                    // TODO: We need a '!' safe path join that moves the '!' to the front if a segment contains it.
+                    var optional = /!/.test(path);
+                    if (optional) {
+                        path = LIB.path.join(path.replace(/!/, ""));
+                    }
+
+                    return new LIB.Promise(function (resolve, reject) {
 
                         return LIB.fs.exists(path, function (exists) {
                             if (exists) {
@@ -116,15 +117,27 @@ exports.forLib = function (LIB) {
                             }
                             return reject(new Error("File not found '" + path + "'!"));
                         });
+                    }).then(function (path) {
+                        if (!path) return null;
+                        
+                        return LIB.fs.statAsync(path).then(function (stat) {
+    
+                            if (!stat.isFile(path)) {
+                                if (optional) {
+                                    return null;
+                                }
+                                throw new Error("File not found '" + path + "'!");
+                            }
+
+                            return path;
+                        });
                     });
                 }
                 
                 return ensurePath(path).then(function (path) {
                     
-                    if (!path) {
-                        return null;
-                    }
-        
+                    if (!path) return null;
+
                     return new LIB.Promise(function (resolve, reject) {
         
                         try {
