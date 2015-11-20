@@ -1,6 +1,7 @@
 {
     "@entity": {
         "${{ARG.namespace}}.entity": {
+            "profile": "T1",
             "deploy": "T1"
         }
     }

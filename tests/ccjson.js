@@ -25,6 +25,7 @@ var TESTS = {
     "10": true,
     "11": true,
     "12": true,
+    "13": true,
     "99.01": true,
     "99.02": true,
     "99.03": true
@@ -32,6 +33,8 @@ var TESTS = {
 
 
 describe('ccjson', function() {
+    
+    this.timeout(15 * 1000);
 
     const EXPECTATIONS = {
         "01-EntityImplementation": function (overrides, proto) {
@@ -68,7 +71,8 @@ describe('ccjson', function() {
     function makeTestable (property, obj) {
         if (property === "@entities") {
             Object.keys(obj).forEach(function (name) {
-                obj[name] = obj[name].promise._settledValue.prototype;
+                obj[name] = obj[name].prototype;
+                delete obj[name].getInstance;
                 if (obj[name]["@instances"]) {
                     obj[name]["@instances"] = Object.keys(obj[name]["@instances"]);
                 }
@@ -105,9 +109,8 @@ describe('ccjson', function() {
             delete config.prototype.getInstance;
             makeTestable("@entities", config.prototype["@entities"]);
 
-//console.log("config", JSON.stringify(config.prototype, null, 4));
-
             ASSERT.deepEqual(config.prototype, {
+                "config": {},
                 "@entities": {
                     "entity": EXPECTATIONS["01-EntityImplementation"]({
                         "config": {
@@ -142,6 +145,7 @@ describe('ccjson', function() {
             };
 
             ASSERT.deepEqual(config.prototype, {
+                "config": {},
                 "@entities": {
                     "entity": EXPECTATIONS["01-EntityImplementation"]({
                         "config": {
@@ -185,20 +189,21 @@ describe('ccjson', function() {
             makeTestable("@instances", config.prototype["@instances"]);
             var proto = {
                 "@instances": [
-                    "inst3",
                     "inst1",
-                    "inst2"
+                    "inst2",
+                    "inst3"
                 ],
                 "@instances.order": [
-                    "inst3",
                     "inst1",
-                    "inst2"
+                    "inst2",
+                    "inst3"
                 ]
             };
 
 //console.log("config", JSON.stringify(config.prototype, null, 4));
 
             ASSERT.deepEqual(config.prototype, {
+                "config": {},
                 "@entities": {
                     "entity": EXPECTATIONS["01-EntityImplementation"]({
                         "config": {
@@ -269,6 +274,7 @@ describe('ccjson', function() {
 
             delete config.prototype.getInstance;
             ASSERT.deepEqual(config.prototype, {
+                "config": {},
                 "@entities": {
                     "entity": EXPECTATIONS["01-EntityImplementation"]({
                         "config": {
@@ -337,20 +343,21 @@ describe('ccjson', function() {
             makeTestable("@instances", config.prototype["@instances"]);
             var proto1 = {
                 "@instances": [
-                    "inst2",
                     "inst1",
+                    "inst2",
                     "inst3"
                 ],
                 "@instances.order": [
+                    "inst1",
                     "inst2",
-                    "inst3",
-                    "inst1"
+                    "inst3"
                 ]
             };
 
 //console.log("config", JSON.stringify(config.prototype, null, 4));
 
             ASSERT.deepEqual(config.prototype, {
+                "config": {},
                 "@entities": {
                     "entity": EXPECTATIONS["01-EntityImplementation"]({
                         "config": {
@@ -442,6 +449,7 @@ describe('ccjson', function() {
 //console.log("config", JSON.stringify(config.prototype, null, 4));
 
             ASSERT.deepEqual(config.prototype, {
+                "config": {},
                 "@entities": {
                     "profile.impl": LIB._.assign({
                         "_entity": "07-InstanceAspects/profile",
@@ -465,6 +473,8 @@ describe('ccjson', function() {
                     "auth": LIB._.assign({
                         "_entity": "07-InstanceAspects/auth",
                         "config": {
+                            "key1": "val1",
+                            "key2": "val2",
                             "someVariable1": "Value1",
                             "set1": {
                                 "someVariable2": "Value2"
@@ -516,6 +526,7 @@ describe('ccjson', function() {
 //console.log("config", JSON.stringify(config.prototype, null, 4));
 
             ASSERT.deepEqual(config.prototype, {
+                "config": {},
                 "@entities": {
                     "profile.impl": LIB._.assign({
                         "_entity": "08-InstanceAspectFunctions/profile",
@@ -584,6 +595,7 @@ describe('ccjson', function() {
 //console.log("config", JSON.stringify(config.prototype, null, 4));
 
             ASSERT.deepEqual(config.prototype, {
+                "config": {},
                 "@entities": {
                     "entity": EXPECTATIONS["01-EntityImplementation"]({
                         "_entity": "01-EntityImplementation/entity",
@@ -649,6 +661,7 @@ describe('ccjson', function() {
 //console.log("config", JSON.stringify(config.prototype, null, 4));
 
             ASSERT.deepEqual(config.prototype, {
+                "config": {},
                 "@entities": {
                     "entity": {
                         "_entity": "11-InheritedEntityImplementation/entity",
@@ -695,7 +708,9 @@ describe('ccjson', function() {
         return ccjson.parseFile(
             PATH.join(__dirname, "12-OptionalInheritance/config.ccjson")
         ).then(function (config) {
-            ASSERT.deepEqual(JSON.stringify(config.prototype), "{}");
+            ASSERT.deepEqual(JSON.stringify(config.prototype), JSON.stringify({
+                "config": {}
+            }));
             return done();
         }).catch(done);
     });
@@ -723,9 +738,10 @@ describe('ccjson', function() {
                 ]
             };
 
-console.log("config 2", JSON.stringify(config.prototype, null, 4));
+//console.log("config 2", JSON.stringify(config.prototype, null, 4));
 
             ASSERT.deepEqual(config.prototype, {
+                "config": {},
                 "@entities": {
                     "entity": LIB._.assign({
                         "config": {
@@ -752,6 +768,7 @@ console.log("config 2", JSON.stringify(config.prototype, null, 4));
                             "config2": "proto2.json",
                             "config3": "proto3.json",
                             "config4": "proto3.json",
+                            "config5": "proto1.json",
                             "$alias": "inst2"
                         }
                     }, proto1)
@@ -804,6 +821,7 @@ console.log("config 2", JSON.stringify(config.prototype, null, 4));
 //console.log("config", JSON.stringify(config.prototype, null, 4));
 
             ASSERT.deepEqual(config.prototype, {
+                "config": {},
                 "@entities": {
                     "profile.impl": LIB._.assign({
                         "_entity": "99-ZeroSystem-01/profile",
@@ -921,16 +939,19 @@ console.log("config 2", JSON.stringify(config.prototype, null, 4));
 //console.log("config 2", JSON.stringify(config.prototype, null, 4));
 
             ASSERT.deepEqual(config.prototype, {
+                "config": {},
                 "@entities": {
                     "entity": EXPECTATIONS["01-EntityImplementation"]({
                         "_entity": "01-EntityImplementation/entity",
                         "config": {
-                            "entity": "default"
+                            "entity": "default",
+                            "entity1": "overlaid"
                         }
                     }, proto1),
                     "fs": LIB._.assign({
                         "_entity": "99-ZeroSystem-02/fs",
                         "config": {
+                            "default": "overlaid"
                         }
                     }, proto2),
                     "entityInherited": LIB._.assign({
@@ -961,6 +982,7 @@ console.log("config 2", JSON.stringify(config.prototype, null, 4));
                         "_entity": "99-ZeroSystem-02/fs",
                         "config": {
                             "basePath": "cacheBasePathA",
+                            "default": "overlaid",
                             "$alias": "stackA.fs"
                         }
                     }, proto2),
@@ -968,6 +990,7 @@ console.log("config 2", JSON.stringify(config.prototype, null, 4));
                         "_entity": "99-ZeroSystem-02/fs",
                         "config": {
                             "basePath": "cacheBasePathB",
+                            "default": "overlaid",
                             "$alias": "stackB.fs"
                         }
                     }, proto2),
@@ -980,6 +1003,7 @@ console.log("config 2", JSON.stringify(config.prototype, null, 4));
                             "signed": "signed",
                             "fromStack": "A",
                             "our1": "override1",
+                            "entity1": "overlaid",
                             "$alias": "stackA.entity"
                         }
                     }, proto1),
@@ -991,6 +1015,7 @@ console.log("config 2", JSON.stringify(config.prototype, null, 4));
                             "namespaceFromStackProto": "stackB",
                             "signed": "signed",
                             "fromStack": "B",
+                            "entity1": "overlaid",
                             "our2": "override2",
                             "$alias": "stackB.entity"
                         }
@@ -1028,6 +1053,7 @@ console.log("config 2", JSON.stringify(config.prototype, null, 4));
 //console.log("config 2", JSON.stringify(config.prototype, null, 4));
 
             ASSERT.deepEqual(config.prototype, {
+                "config": {},
                 "@entities": {
                     "entity": LIB._.assign({
                         "config": {
@@ -1037,12 +1063,14 @@ console.log("config 2", JSON.stringify(config.prototype, null, 4));
                 "@instances": {
                     "stackA.entity": LIB._.assign({
                         "config": {
+                            "profile": "T1",
                             "deploy": "boot-target",
                             "$alias": "stackA.entity"
                         }
                     }, proto1),
                     "stackB.entity": LIB._.assign({
                         "config": {
+                            "profile": "T1",
                             "deploy": "boot-target",
                             "$alias": "stackB.entity"
                         }

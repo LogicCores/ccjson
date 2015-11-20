@@ -1,5 +1,8 @@
 {
     "@": {
+        "entity": {
+            "entity1": "overlaid"
+        },
         "fs": {
             "default": "overlaid"
         }

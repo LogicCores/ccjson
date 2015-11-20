@@ -12,7 +12,8 @@
         },
         "$inst2": {
             "config2": "proto1.json",
-            "config3": "proto1.json"
+            "config3": "proto1.json",
+            "config5": "proto1.json"
         }
     }
 }
