@@ -273,7 +273,7 @@ exports.forLib = function (LIB) {
 
                     // Wait for all mappings to be parsed.
                     return LIB.Promise.all(Object.keys(self.declarations.mappings).map(function (alias) {
-                        return self.declarations.mappings[alias].parsed.promise.timeout(1000).catch(LIB.Promise.TimeoutError, function (err) {
+                        return self.declarations.mappings[alias].parsed.promise.timeout(10 * 1000).catch(LIB.Promise.TimeoutError, function (err) {
                             console.error("Parsing of mapping '" + alias + "' from file '" + path + "' did not complete in time!");
                             throw err;
                         }).then(function () {
