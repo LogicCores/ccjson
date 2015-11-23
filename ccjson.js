@@ -749,11 +749,14 @@ exports.forLib = function (LIB) {
 
 //console.log("done instanciating root entity!", impl);
 
+                    ccjson.emit("booted");
+
                     return impl;
                 });
             });
         }
     }
+    CCJSON.prototype = Object.create(LIB.EventEmitter.prototype);
 
     return CCJSON;
 }
