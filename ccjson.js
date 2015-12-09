@@ -573,7 +573,7 @@ exports.forLib = function (LIB) {
                                         });
                                     });
                                 } catch (err) {
-                                    console.error("Error while running AspectInstance for '" + instanceAspectAlias +"' while resolving aspect instance for entity '" + entityAlias + "' instance '" + instanceAlias + "'", err.stack);
+                                    console.error("Error while running AspectInstance for '" + instanceAspectAlias +"' while resolving aspect instance for entity '" + info.entityAlias + "' instance '" + instanceAlias + "'", err.stack);
                                     throw err;
                                 }
                             }).then(function () {
