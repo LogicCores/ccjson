@@ -3,7 +3,9 @@ require("require.async")(require);
 
 const TRAVERSE = require("traverse");
 
-exports.makeLib = function () {
+const api = {};
+
+api.makeLib = function () {
     var api = {
         path: require("path"),
         fs: require("fs"),
@@ -20,8 +22,7 @@ exports.makeLib = function () {
     return api;
 }
 
-
-exports.forLib = function (LIB) {
+api.forLib = function (LIB) {
 
     const PARSER = require("./parser").forLib(LIB);
 
@@ -760,3 +761,13 @@ exports.forLib = function (LIB) {
 
     return CCJSON;
 }
+
+module.exports = function (LIB) {
+    LIB = LIB || api.makeLib();
+    var instance = api.forLib(LIB);
+    instance.LIB = LIB;
+    return instance;
+}
+Object.keys(api).forEach(function (name) {
+    module.exports[name] = api[name];
+});
