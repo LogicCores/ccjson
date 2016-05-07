@@ -8,7 +8,7 @@ const api = {};
 api.makeLib = function () {
     var api = {
         path: require("path"),
-        fs: require("fs"),
+        fs: require("fs-extra"),
         Promise: require("bluebird"),
         _: require("lodash"),
         traverse: TRAVERSE,
@@ -19,6 +19,13 @@ api.makeLib = function () {
         }
     };
     api.Promise.promisifyAll(api.fs);
+    api.fs.existsAsync = function (path) {
+        return new api.Promise(function (resolve) {
+            return api.fs.exists(path, resolve);
+        });
+    };
+    api.PATH = api.path;
+    api.FS = api.fs;
     return api;
 }
 
@@ -28,10 +35,10 @@ api.forLib = function (LIB) {
 
     const EVENTS = require("events");
     const ESCAPE_REGEXP = require("escape-regexp-component");
-    
 
-    const VERBOSE = false;
-    
+
+    const VERBOSE = LIB.VERBOSE || false;
+
 
     function defer () {
         var deferred = {};
@@ -762,8 +769,13 @@ api.forLib = function (LIB) {
     return CCJSON;
 }
 
-module.exports = function (LIB) {
+module.exports = function (LIB, LIB_EXTRA) {
     LIB = LIB || api.makeLib();
+    if (LIB_EXTRA) {
+        Object.keys(LIB_EXTRA).forEach(function (name) {
+            LIB[name] = LIB_EXTRA[name];
+        });
+    }
     var instance = api.forLib(LIB);
     instance.LIB = LIB;
     return instance;
