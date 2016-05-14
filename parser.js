@@ -551,7 +551,7 @@ exports.forLib = function (LIB) {
                                     return;
                                 }
 
-                                throw new Error("Unsupported token sequence!");
+                                throw new Error("Unsupported token sequence in file '" + path + "'!");
 
                             } catch (err) {
                                 console.error(err.stack);
