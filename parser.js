@@ -629,7 +629,16 @@ exports.forLib = function (LIB) {
                                             });
                                         } else {
                                             // We have a reference to an entity instance variable
-                                            var selectorParts = m[2].split("/");
+                                            // TODO: Make these rules configurable?
+                                            var selectorParts = null;
+                                            if (m[2].indexOf(":") === -1) {
+                                                console.log("warning: Instance variables are now of the format: <instance>:<selector>");
+                                                selectorParts = m[2].split("/");
+                                            } else {
+                                                var pointerParts = m[2].split(":");
+                                                selectorParts = pointerParts[1].split("/");
+                                                selectorParts.unshift(pointerParts[0]);
+                                            }
                                             valueMeta.push({
                                                 "type": "instance-variable-selector",
                                                 "instanceAlias": selectorParts.shift(),

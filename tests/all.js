@@ -404,6 +404,7 @@ describe('ccjson', function() {
                             "myobjFromInst1": {
                                 "mysubvar": "myobj:sub:inst1:my-env-var-value"
                             },
+                            "myobjMySubVarFromInst1": "myobj:sub:inst1:my-env-var-value",
                             "andAgain": {
                                 "myobjFromInst1nested": {
                                     "mysubvar": "myobj:sub:inst1:my-env-var-value"
