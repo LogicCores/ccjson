@@ -511,10 +511,16 @@ api.forLib = function (LIB) {
                             return LIB.Promise.all(info.meta.map(function (meta) {
                                 return LIB.Promise.try(function () {
                                     if (meta.type === "instance-variable-selector") {
-                                        return getInstanceDeferred(meta.instanceAlias).promise.timeout(5000).catch(LIB.Promise.TimeoutError, function (err) {
+                                        // TODO: Make timeout configurable.
+                                        return getInstanceDeferred(meta.instanceAlias).promise.timeout(60 * 5 * 1000).catch(LIB.Promise.TimeoutError, function (err) {
                                             console.error("Timeout waiting for instance '" + meta.instanceAlias + "' while resolving instance '" + instanceAlias + "'!");
                                             throw err;
                                         }).then(function (instance) {
+                                            
+                                            if (typeof instance.getAt !== "function") {
+                                                throw new Error("Instance '" + meta.instanceAlias + " does not declare 'getAt()'!");
+                                            }
+                                            
                                             return instance.getAt(meta.selector);
                                         });
                                     } else
