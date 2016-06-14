@@ -512,7 +512,7 @@ api.forLib = function (LIB) {
                                 return LIB.Promise.try(function () {
                                     if (meta.type === "instance-variable-selector") {
                                         // TODO: Make timeout configurable.
-                                        return getInstanceDeferred(meta.instanceAlias).promise.timeout(60 * 5 * 1000).catch(LIB.Promise.TimeoutError, function (err) {
+                                        return getInstanceDeferred(meta.instanceAlias).promise.timeout(60 * 30 * 1000).catch(LIB.Promise.TimeoutError, function (err) {
                                             console.error("Timeout waiting for instance '" + meta.instanceAlias + "' while resolving instance '" + instanceAlias + "'!");
                                             throw err;
                                         }).then(function (instance) {
@@ -689,7 +689,7 @@ api.forLib = function (LIB) {
     
                             if (!mappedEntity) {
                                 console.log("self.mappings", Object.keys(self.mappings));
-                                throw new Error("Entity '" + entityAlias + "' used for instance '" + instanceAlias + "' not mapped!");
+                                throw new Error("Entity '" + entityAlias + "' used for instance '" + instanceAlias + "' not mapped in config file '" + path + "'!");
                             }
     
                             mappedEntity.prototype["@instances"] = self.instances.byEntity[entityAlias].instances;
