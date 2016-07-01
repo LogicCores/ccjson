@@ -37,7 +37,7 @@ api.forLib = function (LIB) {
     const ESCAPE_REGEXP = require("escape-regexp-component");
 
 
-    const VERBOSE = LIB.VERBOSE || false;
+    var VERBOSE = LIB.VERBOSE || false;
 
 
     function defer () {
@@ -101,11 +101,15 @@ api.forLib = function (LIB) {
 
         ccjson.parseFile = function (path, options) {
 
+            if (options.verbose) {
+                VERBOSE = options.verbose;
+            }
+
             var Entity = function () {
                 var self = this;
 
                 self.implementation = LIB.Promise.resolve(null);
-                
+
                 self.waitForImplementation = function () {
                     if (
                         self.implementation &&
@@ -114,7 +118,7 @@ api.forLib = function (LIB) {
                         // Wait for the implementation to be loaded.
                         return self.implementation.then(function (implementation) {
                             self.implementation = implementation;
-                            return null; 
+                            return null;
                         });
                     }
                     return LIB.Promise.resolve();
@@ -152,7 +156,7 @@ api.forLib = function (LIB) {
                 var self = this;
 
 //console.log("PARSE FILE", path, "WITH CALLING ARGS", callingArgs);
-                
+
                 depth = depth || 0;
 
 
@@ -232,7 +236,7 @@ api.forLib = function (LIB) {
                         },
                         path
                     ]);
-                });                
+                });
 
                 parser.on("InheritEntity", function (info) {
                     if (VERBOSE) console.log("EVENT: InheritEntity:", info);
@@ -272,11 +276,11 @@ api.forLib = function (LIB) {
                 });
 
                 return parser.parse().then(function () {
-    
+
 //console.log("all parsed for entity:", path);
 
                     return self.waitForImplementation();
-                    
+
                 }).then(function () {
 
                     // Wait for all mappings to be parsed.
@@ -312,7 +316,7 @@ api.forLib = function (LIB) {
 
             Entity.prototype.instanciateTree = function (overrides) {
                 var self = this;
-                
+
                 function mergeConfigLayers (configLayers) {
                     var mergedConfig = {};
                     configLayers.forEach(function (configLayer) {
@@ -380,7 +384,7 @@ api.forLib = function (LIB) {
                         entity.declarations.inherited.forEach(function (inheritedEntity) {
                             forNode(inheritedEntity, inMapping);
                         });
-                        
+
                         function addMapping (alias, entity) {
                             if (!mappings[alias]) {
                                 mappings[alias] = {
@@ -399,7 +403,7 @@ api.forLib = function (LIB) {
                             var declaredMapping = entity.declarations.mappings[alias];
 
                             forNode(declaredMapping, alias);
-                            
+
                             addMapping(alias, declaredMapping);
                         });
                         if (inMapping) {
@@ -431,7 +435,7 @@ api.forLib = function (LIB) {
                     var instances = {};
 
                     function mergeConfig (mergedConfig, config) {
-                        
+
 //console.log("mergeCOnfig()", mergedConfig, config);
 
                         if (
@@ -502,11 +506,11 @@ api.forLib = function (LIB) {
 
 
                     function resolveInstanceDeclaration (instanceAlias) {
-                        
+
                         function fetchVariable (config, info) {
 
 //console.log("fetchVariable()", config, info);
-    
+
                             var targetString = info.value;
                             return LIB.Promise.all(info.meta.map(function (meta) {
                                 return LIB.Promise.try(function () {
@@ -516,11 +520,11 @@ api.forLib = function (LIB) {
                                             console.error("Timeout waiting for instance '" + meta.instanceAlias + "' while resolving instance '" + instanceAlias + "'!");
                                             throw err;
                                         }).then(function (instance) {
-                                            
+
                                             if (typeof instance.getAt !== "function") {
                                                 throw new Error("Instance '" + meta.instanceAlias + " does not declare 'getAt()'!");
                                             }
-                                            
+
                                             return instance.getAt(meta.selector);
                                         });
                                     } else
@@ -546,14 +550,14 @@ api.forLib = function (LIB) {
                                 return targetString;
                             });
                         }
-                        
+
                         function resolveInstanceAspect (info) {
 
                             if (!info.aspectInstanceAlias) {
                                 return LIB.Promise.resolve(info);
                             }
 
-//console.log("resolveInstanceAspects()", info);                            
+//console.log("resolveInstanceAspects()", info);
 
                             var instanceAliasParts = info.aspectInstanceAlias.split(".");
                             var instanceAspectMethod = instanceAliasParts.pop();
@@ -598,16 +602,16 @@ api.forLib = function (LIB) {
                         var instanceDeclarationEntity = instances[instanceAlias];
 
 //console.log("instanceDeclarationEntity BEFORE", JSON.stringify(instanceDeclarationEntity, null, 4));
-                        
+
                         var mergedConfig = {};
                         return LIB.Promise.mapSeries(instanceDeclarationEntity.config, function (layerConfig) {
-                            
+
 //console.log("layerConfig 1", layerConfig[0]);
 
                             return resolveInstanceAspect(layerConfig[0]).then(function (resolvedLayerConfig) {
-                                
+
 //console.log("layerConfig 2", resolvedLayerConfig);
-    
+
                                 // We start resolving after having setup all promises.
                                 var startResolving = null;
                                 var done = new LIB.Promise(function (resolve, reject) {
@@ -618,15 +622,15 @@ api.forLib = function (LIB) {
                                     var self = this;
                                     if (typeof node === "function") {
                                         var setPath = self.path;
-        
+
                                         done = done.then(function () {
                                             return fetchVariable(mergedConfig, node());
                                         }).then(function (value) {
-/*    
+/*
     console.log("FETCHED VALUE", value);
     console.log("FETCHED VALUE setPath", setPath);
     console.log("FETCHED VALUE resolvedLayerConfig", resolvedLayerConfig);
-*/    
+*/
 
     //process.exit(1);
                                             LIB.traverse(resolvedLayerConfig.config).set(setPath, value);
@@ -651,7 +655,7 @@ api.forLib = function (LIB) {
                     }
 
                     return LIB.Promise.all(Object.keys(instances).map(function (instanceAlias) {
-                        
+
                         var instanceDeclarationEntity = instances[instanceAlias];
                         var entityAlias = instanceDeclarationEntity.entityAlias;
 
@@ -673,30 +677,30 @@ api.forLib = function (LIB) {
                             ) {
                                 throw new Error("Instance for alias '" + instanceAlias + "' already declared!");
                             }
-    
+
 //    console.log("instanceDeclarationEntity", instanceDeclarationEntity);
 
 
                             var configOverrides = instanceDeclarationEntity.config;
-    
+
 //    console.log("configOverrides!!!!", JSON.stringify(configOverrides, null, 4));
-//process.exit(1);    
-    
+//process.exit(1);
+
                             var mappedEntity = self.mappings[entityAlias];
-    
+
     //console.log("mappedEntity", entityAlias, mappedEntity);
-    
-    
+
+
                             if (!mappedEntity) {
                                 console.log("self.mappings", Object.keys(self.mappings));
                                 throw new Error("Entity '" + entityAlias + "' used for instance '" + instanceAlias + "' not mapped in config file '" + path + "'!");
                             }
-    
+
                             mappedEntity.prototype["@instances"] = self.instances.byEntity[entityAlias].instances;
                             mappedEntity.prototype["@instances.order"] = self.instances.byEntity[entityAlias].order;
-    
+
                             configOverrides["$alias"] = instanceAlias;
-    
+
                             return LIB.Promise.try(function () {
                                 return new mappedEntity(configOverrides);
                             }).then(function (instance) {
@@ -751,10 +755,10 @@ api.forLib = function (LIB) {
 
 
             }
-            
-            
+
+
             var entity = new Entity();
-            
+
             return entity.parse(path, options).then(function () {
 
 //console.log("done parsing root entity!", entity);
