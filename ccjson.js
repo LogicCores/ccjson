@@ -100,7 +100,7 @@ api.forLib = function (LIB) {
         }
 
         ccjson.parseFile = function (path, options) {
-
+            options = options || {};
             if (options.verbose) {
                 VERBOSE = options.verbose;
             }
