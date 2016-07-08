@@ -26,6 +26,8 @@ api.makeLib = function () {
     };
     api.PATH = api.path;
     api.FS = api.fs;
+    api.verbose = !!process.env.VERBOSE;
+    api.VERBOSE = api.verbose;
     return api;
 }
 
@@ -103,6 +105,8 @@ api.forLib = function (LIB) {
             options = options || {};
             if (options.verbose) {
                 VERBOSE = options.verbose;
+                LIB.verbose = VERBOSE;
+                LIB.VERBOSE = LIB.verbose;
             }
 
             var Entity = function () {
