@@ -103,7 +103,7 @@ api.forLib = function (LIB) {
 
         ccjson.parseFile = function (path, options) {
             options = options || {};
-            if (options.verbose) {
+            if (typeof options.verbose !== "undefined") {
                 VERBOSE = options.verbose;
                 LIB.verbose = VERBOSE;
                 LIB.VERBOSE = LIB.verbose;
