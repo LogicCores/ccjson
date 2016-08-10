@@ -39,6 +39,7 @@ api.forLib = function (LIB) {
     const ESCAPE_REGEXP = require("escape-regexp-component");
 
 
+    var DEBUG = false;
     var VERBOSE = LIB.VERBOSE || false;
 
 
@@ -107,6 +108,10 @@ api.forLib = function (LIB) {
                 VERBOSE = options.verbose;
                 LIB.verbose = VERBOSE;
                 LIB.VERBOSE = LIB.verbose;
+            }
+
+            if (LIB.VERBOSE) {
+                console.log("[ccjson] parseFile(path, options)", path, options);
             }
 
             var Entity = function () {
@@ -188,7 +193,7 @@ api.forLib = function (LIB) {
                 var parser = new PARSER(path, options, callingArgs, depth);
 
                 parser.on("EntityImplementation", function (info) {
-                    if (VERBOSE) console.log("EVENT: EntityImplementation (registerEntityImplementation):", info);
+                    if (DEBUG) console.log("EVENT: EntityImplementation (registerEntityImplementation):", info);
 
                     // TODO: Support multiple implementations that get merged
                     self.implementation = loadEntityImplementation(
@@ -197,7 +202,7 @@ api.forLib = function (LIB) {
                 });
 
                 parser.on("EntityConfig", function (info) {
-                    if (VERBOSE) console.log("EVENT: EntityConfig:", info);
+                    if (DEBUG) console.log("EVENT: EntityConfig:", info);
 
                     self.configLayers.push([
                         {
@@ -208,7 +213,7 @@ api.forLib = function (LIB) {
                 });
 
                 parser.on("MappedEntityPointer", function (info) {
-                    if (VERBOSE) console.log("EVENT: MappedEntityPointer:", info);
+                    if (DEBUG) console.log("EVENT: MappedEntityPointer:", info);
 
                     // NOTE: We do not need to wait for this promise as we wait
                     //       after parsing our entity for all mappings to finish parsing.
@@ -221,7 +226,7 @@ api.forLib = function (LIB) {
                 });
 
                 parser.on("MappedEntityConfig", function (info) {
-                    if (VERBOSE) console.log("EVENT: MappedEntityConfig:", info);
+                    if (DEBUG) console.log("EVENT: MappedEntityConfig:", info);
 
                     getMapping(info.entityAlias, true).configLayers.push([
                         {
@@ -232,7 +237,7 @@ api.forLib = function (LIB) {
                 });
 
                 parser.on("MappedEntityInstance", function (info) {
-                    if (VERBOSE) console.log("EVENT: MappedEntityInstance:", info);
+                    if (DEBUG) console.log("EVENT: MappedEntityInstance:", info);
 
                     getInstance(info.entityAlias, info.instanceAlias).configLayers.push([
                         {
@@ -243,7 +248,7 @@ api.forLib = function (LIB) {
                 });
 
                 parser.on("InheritEntity", function (info) {
-                    if (VERBOSE) console.log("EVENT: InheritEntity:", info);
+                    if (DEBUG) console.log("EVENT: InheritEntity:", info);
 
                     var inheritEntity = new Entity();
 
@@ -261,7 +266,7 @@ api.forLib = function (LIB) {
                 });
 
                 parser.on("MappedEntityInstanceAspect", function (info) {
-                    if (VERBOSE) console.log("EVENT: MappedEntityInstanceAspect:", info);
+                    if (DEBUG) console.log("EVENT: MappedEntityInstanceAspect:", info);
 
                     var m = info.aspectPointer.match(/^\$(.+)\(\)->(.+)$/);
                     if (!m) {
@@ -320,6 +325,10 @@ api.forLib = function (LIB) {
 
             Entity.prototype.instanciateTree = function (overrides) {
                 var self = this;
+
+                if (LIB.VERBOSE) {
+                    console.log("[ccjson] Entity.instanciateTree(overrides)", overrides);
+                }
 
                 function mergeConfigLayers (configLayers) {
                     var mergedConfig = {};
@@ -434,6 +443,31 @@ api.forLib = function (LIB) {
 
                 function instanciateEntityInstances () {
 
+                    var c = 0;
+                    function T () {
+                        var self = this;
+                        var index = 0;
+                        var active = {};
+                        self.push = function (info) {
+                            index += 1;
+                            var id = ("id:" + index);
+                            active[id] = info;
+                            return {
+                                pop: function () {
+                                    delete active[id];
+                                    // TODO: Enable when '--trace' flag is set.
+                                    if (LIB.VERBOSE) {
+                                        self.logActive();
+                                    }
+                                }
+                            };
+                        };
+                        self.logActive = function () {
+                            console.log("Active steps:", JSON.stringify(active, null, 4));
+                        }
+                    }
+                    var t = new T();
+
 //console.log("instanciateEntityInstances()");
 
                     var instances = {};
@@ -519,8 +553,14 @@ api.forLib = function (LIB) {
                             return LIB.Promise.all(info.meta.map(function (meta) {
                                 return LIB.Promise.try(function () {
                                     if (meta.type === "instance-variable-selector") {
+
+                                        var timeout = 60 * 30 * 1000;
+                                        if (LIB.VERBOSE) {
+                                            timeout = 5 * 1000;
+                                        }
+
                                         // TODO: Make timeout configurable.
-                                        return getInstanceDeferred(meta.instanceAlias).promise.timeout(60 * 30 * 1000).catch(LIB.Promise.TimeoutError, function (err) {
+                                        return getInstanceDeferred(meta.instanceAlias).promise.timeout(timeout).catch(LIB.Promise.TimeoutError, function (err) {
                                             console.error("Timeout waiting for instance '" + meta.instanceAlias + "' while resolving instance '" + instanceAlias + "'!");
                                             throw err;
                                         }).then(function (instance) {
@@ -567,7 +607,9 @@ api.forLib = function (LIB) {
                             var instanceAspectMethod = instanceAliasParts.pop();
                             var instanceAspectAlias = instanceAliasParts.join(".");
 
+                            var s3 = t.push("getInstanceDeferred:" + instanceAspectAlias);
                             return getInstanceDeferred(instanceAspectAlias).promise.then(function (instance) {
+                                s3.pop();
 
 //console.log("GOT ASPECT INSTANCE", instance);
 
@@ -672,8 +714,9 @@ api.forLib = function (LIB) {
                         }
                         self.instances.byEntity[instanceDeclarationEntity.entityAlias].order.push(instanceAlias);
 
-
+                        var s2 = t.push("resolveInstanceDeclaration:" + instanceAlias);
                         return resolveInstanceDeclaration(instanceAlias).then(function (instanceDeclarationEntity) {
+                            s2.pop();
 
                             if (
                                 self.instances.byAlias[instanceAlias] &&
@@ -705,9 +748,12 @@ api.forLib = function (LIB) {
 
                             configOverrides["$alias"] = instanceAlias;
 
+
+                            var s1 = t.push("new mappedEntity:" + instanceAlias);
                             return LIB.Promise.try(function () {
                                 return new mappedEntity(configOverrides);
                             }).then(function (instance) {
+                                s1.pop();
 
                                 self.instances.byEntity[entityAlias].instances[instanceAlias] = instance;
 
@@ -719,7 +765,6 @@ api.forLib = function (LIB) {
 
 //console.log("all instances deferred");
 //process.exit(1);
-
                         // Remove all deferreds.
                         return LIB.Promise.all(Object.keys(self.instances.byAlias).map(function (alias) {
                             return self.instances.byAlias[alias].promise.then(function (instance) {
@@ -729,6 +774,9 @@ api.forLib = function (LIB) {
                         })).then(function() {
                             return self.instances.byAlias;
                         });
+                    }).catch(function (err) {
+                        console.error(err.stack);
+                        throw err;
                     });
                 }
 
@@ -741,12 +789,21 @@ api.forLib = function (LIB) {
 
                         if (Object.keys(mappings).length) {
                             impl.prototype["@entities"] = mappings;
+
+
+                            if (LIB.VERBOSE) {
+                                console.log("[ccjson] mappings", mappings);
+                            }
                         }
 
                         return instanciateEntityInstances().then(function (instances) {
 
                             if (Object.keys(instances).length > 0) {
                                 impl.prototype["@instances"] = instances;
+                            }
+
+                            if (LIB.VERBOSE) {
+                                console.log("[ccjson] instances", instances);
                             }
 
                             return null;
