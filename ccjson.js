@@ -561,7 +561,8 @@ api.forLib = function (LIB) {
 
                                         // TODO: Make timeout configurable.
                                         return getInstanceDeferred(meta.instanceAlias).promise.timeout(timeout).catch(LIB.Promise.TimeoutError, function (err) {
-                                            console.error("Timeout waiting for instance '" + meta.instanceAlias + "' while resolving instance '" + instanceAlias + "'!");
+                                            // TODO: Provide different way to change timeout.
+                                            console.error("(DROP -v to extend timeout!) Timeout waiting for instance '" + meta.instanceAlias + "' while resolving instance '" + instanceAlias + "'!");
                                             throw err;
                                         }).then(function (instance) {
 
