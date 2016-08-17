@@ -708,7 +708,12 @@ describe('ccjson', function() {
     it('12-OptionalInheritance', function (done) {
         var ccjson = new CCJSON();
         return ccjson.parseFile(
-            PATH.join(__dirname, "12-OptionalInheritance/config.ccjson")
+            PATH.join(__dirname, "12-OptionalInheritance/config.ccjson"),
+            {
+                env: function () {
+                    return "";
+                }
+            }
         ).then(function (config) {
             ASSERT.deepEqual(JSON.stringify(config.prototype), JSON.stringify({
                 "config": {}

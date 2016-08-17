@@ -1,7 +1,9 @@
 {
     "@": {
         "$": [
-            "!../MISSING-FOLDER/config.ccjson"
+            "!../MISSING-FOLDER/config.ccjson",
+            "!",
+            "!{{ENV.__NO_VAR__}}"
         ]
     }
 }
