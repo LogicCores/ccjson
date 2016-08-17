@@ -16,9 +16,11 @@ api.makeLib = function () {
         ccjson: exports,
         CJSON: {
             stringify: require("canonical-json")
-        }
+        },
+        glob: require("glob")
     };
     api.Promise.promisifyAll(api.fs);
+    api.glob.async = api.Promise.promisify(api.glob);
     api.fs.existsAsync = function (path) {
         return new api.Promise(function (resolve) {
             return api.fs.exists(path, resolve);
@@ -250,19 +252,37 @@ api.forLib = function (LIB) {
                 parser.on("InheritEntity", function (info) {
                     if (DEBUG) console.log("EVENT: InheritEntity:", info);
 
-                    var inheritEntity = new Entity();
-
-                    self.declarations.inherited.push(inheritEntity);
-
                     var args = LIB._.clone(info.config || {});
                     LIB._.merge(args, callingArgs);
 
-                    inheritEntity.parse(
-                        LIB.path.resolve(LIB.path.dirname(path), info.path),
-                        options,
-                        args,
-                        depth + 1
-                    );
+                    function addForPath (entityPath) {
+
+                        var inheritEntity = new Entity();
+
+                        self.declarations.inherited.push(inheritEntity);
+
+                        inheritEntity.parse(
+                            LIB.path.resolve(LIB.path.dirname(path), entityPath),
+                            options,
+                            args,
+                            depth + 1
+                        );
+                    }
+
+                    if (/\*/.test(info.path)) {
+
+                        // TODO: Make async.
+                        var files = LIB.glob.sync(info.path, {
+                            cwd: LIB.path.dirname(path)
+                        });
+
+                        if (files.length > 0) {
+                            files.forEach(addForPath);
+                        }
+
+                    } else {
+                        addForPath(info.path);
+                    }
                 });
 
                 parser.on("MappedEntityInstanceAspect", function (info) {

@@ -48,7 +48,7 @@ exports.forLib = function (LIB) {
                 });
             }).then(function (path) {
                 if (!path) return null;
-                
+
                 return LIB.fs.statAsync(path).then(function (stat) {
 
                     if (!stat.isFile(path)) {
@@ -65,7 +65,7 @@ exports.forLib = function (LIB) {
 
 
         self.parse = function () {
-            
+
         //console.log("\n\n---------------------------------------------------");
         //console.log("PARSE CJSON FILE:", path);
         //console.log("---------------------------------------------------");
@@ -77,11 +77,11 @@ exports.forLib = function (LIB) {
                 return new LIB.Promise(function (resolve, reject) {
 
 //console.log("parseFile ("+ path +")");
-    
+
                     try {
 
                         var stream = CLARINET.createStream({});
-        
+
                         stream.on("error", function (err) {
                             // unhandled errors will throw, since this is a proper node
                             // event emitter.
@@ -95,7 +95,7 @@ exports.forLib = function (LIB) {
 
                         var Buffer = function () {
                             var self = this;
-                
+
                             var config = self.config = {};
 
                             var pointerHistory = [];
@@ -122,7 +122,7 @@ exports.forLib = function (LIB) {
                                 currentKey = key;
                                 currentPath.push(key);
                             };
-                            
+
                             self.onValue = function (value, valueMeta) {
                                 if (valueMeta.length > 0) {
                                     var rawValue = value;
@@ -145,7 +145,7 @@ exports.forLib = function (LIB) {
                                 }
                                 currentPath.pop();
                             };
-                    
+
                             self.onOpenobject = function (key) {
                                 if (currentKey) {
                                     pointerHistory.push(currentPointer);
@@ -168,7 +168,7 @@ exports.forLib = function (LIB) {
                                 currentPath.pop();
                                 currentPointer = pointerHistory.pop();
                             };
-                            
+
                             self.onOpenarray = function () {
                                 if (currentKey) {
                                     pointerHistory.push(currentPointer);
@@ -178,7 +178,7 @@ exports.forLib = function (LIB) {
                                     currentPointer = config = [];
                                 }
                             };
-                            
+
                             self.onClosearray = function () {
                                 currentPointer = pointerHistory.pop();
                             };
@@ -258,7 +258,7 @@ exports.forLib = function (LIB) {
                                         current.depth += 1;
                                         current.section = "@";
                                         return;
-                                    } else                                        
+                                    } else
                                     if (
                                         (
                                             type === "key" ||
@@ -326,7 +326,7 @@ exports.forLib = function (LIB) {
                                         current.section = "inherit";
                                         return;
                                     } else
-*/  
+*/
                                     if (
                                         type === "openobject" &&
                                         value === "$"
@@ -408,7 +408,7 @@ exports.forLib = function (LIB) {
                                     if (type === "closearray") {
                                         current.depth -= 1;
                                         getBuffer().destroy();
-                                        
+
                                         if (current.depth === 2) {
                                             current.section = "@";
                                         } else {
@@ -418,7 +418,7 @@ exports.forLib = function (LIB) {
                                     }
                                 } else
                                 if (current.section === "inherit-args") {
-                                    
+
                                     if (current.depth === 4) {
                                         if (
                                             type === "value" &&
@@ -558,7 +558,7 @@ exports.forLib = function (LIB) {
                                 throw err;
                             }
                         }
-                        
+
                         function replaceAnywhereVariables (value) {
 
                             if (typeof value !== "string") {
@@ -588,10 +588,10 @@ exports.forLib = function (LIB) {
                                     callingArgs[m[2]]
                                 );
                             }
-                            
+
                             return value;
                         }
-    
+
                         stream.on("openobject", function (key) {
                             key = replaceAnywhereVariables(key);
                             nextToken("openobject", key);
@@ -601,9 +601,9 @@ exports.forLib = function (LIB) {
                             nextToken("key", key);
                         });
                         stream.on("value", function (value) {
-    
+
                             var valueMeta = [];
-    
+
                             // These are set in stone after parsing.
                             // If you need dynamic variables use '{{$*}}' variables.
                             if (typeof value === "string") {
@@ -650,7 +650,7 @@ exports.forLib = function (LIB) {
                                     act(m);
                                 }
                             }
-    
+
                             nextToken("value", value, valueMeta);
                         });
                         stream.on("closeobject", function () {
@@ -670,11 +670,11 @@ exports.forLib = function (LIB) {
 
                             return resolve();
                         });
-    
+
                         // pipe is supported, and it's readable/writable
                         // same chunks coming in also go out.
                         LIB.fs.createReadStream(path).pipe(stream);
-        
+
                     } catch (err) {
                         return reject(err);
                     }

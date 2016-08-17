@@ -26,6 +26,7 @@ var TESTS = {
     "11": true,
     "12": true,
     "13": true,
+    "14": true,
     "99.01": true,
     "99.02": true,
     "99.03": true
@@ -33,7 +34,7 @@ var TESTS = {
 
 
 describe('ccjson', function() {
-    
+
     this.timeout(15 * 1000);
 
     const EXPECTATIONS = {
@@ -67,7 +68,7 @@ describe('ccjson', function() {
             return config;
         }
     };
-    
+
     function makeTestable (property, obj) {
         if (property === "@entities") {
             Object.keys(obj).forEach(function (name) {
@@ -141,7 +142,7 @@ describe('ccjson', function() {
                 "@instances.order": [
                     "inst1",
                     "inst2"
-                ]                
+                ]
             };
 
             ASSERT.deepEqual(config.prototype, {
@@ -409,7 +410,7 @@ describe('ccjson', function() {
                                 "myobjFromInst1nested": {
                                     "mysubvar": "myobj:sub:inst1:my-env-var-value"
                                 }
-                            },                            
+                            },
                             "$alias": "inst3"
                         }
                     }, proto1)
@@ -721,6 +722,70 @@ describe('ccjson', function() {
         var ccjson = new CCJSON();
         return ccjson.parseFile(
             PATH.join(__dirname, "13-LayeredConfigInheritance/config.ccjson")
+        ).then(function (config) {
+
+//console.log("config", JSON.stringify(config.prototype, null, 4));
+
+            delete config.prototype.getInstance;
+            makeTestable("@entities", config.prototype["@entities"]);
+            makeTestable("@instances", config.prototype["@instances"]);
+            var proto1 = {
+                "@instances": [
+                    "inst1",
+                    "inst2"
+                ],
+                "@instances.order": [
+                    "inst1",
+                    "inst2"
+                ]
+            };
+
+//console.log("config 2", JSON.stringify(config.prototype, null, 4));
+
+            ASSERT.deepEqual(config.prototype, {
+                "config": {},
+                "@entities": {
+                    "entity": LIB._.assign({
+                        "config": {
+                            "config1": "config.json : 1",
+                            "config2": "config.json : 1",
+                            "config3": "proto3.json",
+                            "config4": "proto4.json"
+                        }
+                    }, proto1)
+                },
+                "@instances": {
+                    "inst1": LIB._.assign({
+                        "config": {
+                            "config1": "config.json : 2",
+                            "config2": "proto3.json",
+                            "config3": "proto3.json",
+                            "config4": "proto4.json",
+                            "$alias": "inst1"
+                        }
+                    }, proto1),
+                    "inst2": LIB._.assign({
+                        "config": {
+                            "config1": "config.json : 2",
+                            "config2": "proto2.json",
+                            "config3": "proto3.json",
+                            "config4": "proto3.json",
+                            "config5": "proto1.json",
+                            "$alias": "inst2"
+                        }
+                    }, proto1)
+                }
+            });
+
+            return done();
+        }).catch(done);
+    });
+
+    if (TESTS["14"])
+    it('14-WildcardConfigInheritance', function (done) {
+        var ccjson = new CCJSON();
+        return ccjson.parseFile(
+            PATH.join(__dirname, "14-WildcardConfigInheritance/config.ccjson")
         ).then(function (config) {
 
 //console.log("config", JSON.stringify(config.prototype, null, 4));
