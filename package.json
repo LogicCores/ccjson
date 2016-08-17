@@ -1,6 +1,6 @@
 {
   "name": "ccjson",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "main": "ccjson.js",
   "dependencies": {
     "JSONPath": "brettz9/JSONPath#19b6a87041",
