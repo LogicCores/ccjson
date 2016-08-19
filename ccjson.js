@@ -261,8 +261,13 @@ api.forLib = function (LIB) {
 
                         self.declarations.inherited.push(inheritEntity);
 
+                        var _path = entityPath;
+                        if (!/^!?\//.test(_path)) {
+                            _path = LIB.path.resolve(LIB.path.dirname(path), entityPath);
+                        }
+
                         inheritEntity.parse(
-                            LIB.path.resolve(LIB.path.dirname(path), entityPath),
+                            _path,
                             options,
                             args,
                             depth + 1
@@ -273,7 +278,7 @@ api.forLib = function (LIB) {
 
                         // TODO: Make async.
                         var files = LIB.glob.sync(info.path, {
-                            cwd: LIB.path.dirname(path)
+                            cwd: LIB.path.dirname(path).replace(/^!/, "")
                         });
 
                         if (files.length > 0) {
