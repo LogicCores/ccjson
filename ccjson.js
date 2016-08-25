@@ -263,7 +263,11 @@ api.forLib = function (LIB) {
 
                         var _path = entityPath;
                         if (!/^!?\//.test(_path)) {
+                            var isOptional = (/^!/.test(path) || /^!/.test(entityPath));
                             _path = LIB.path.resolve(LIB.path.dirname(path.replace(/^!/, "")), entityPath.replace(/^!/, ""));
+                            if (isOptional) {
+                                _path = "!" + _path;
+                            }
                         }
 
                         inheritEntity.parse(
