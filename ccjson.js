@@ -584,10 +584,12 @@ api.forLib = function (LIB) {
                                     if (meta.type === "instance-variable-selector") {
 
                                         var timeout = 60 * 30 * 1000;
+/*
+TODO: Only enable in debug mode.
                                         if (LIB.VERBOSE) {
                                             timeout = 5 * 1000;
                                         }
-
+*/
                                         // TODO: Make timeout configurable.
                                         return getInstanceDeferred(meta.instanceAlias).promise.timeout(timeout).catch(LIB.Promise.TimeoutError, function (err) {
                                             // TODO: Provide different way to change timeout.
