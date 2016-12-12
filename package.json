@@ -1,26 +1,26 @@
 {
-  "name": "ccjson",
-  "version": "0.1.3",
-  "main": "ccjson.js",
-  "dependencies": {
-    "JSONPath": "brettz9/JSONPath#19b6a87041",
-    "bluebird": "^3.0.5",
-    "canonical-json": "0.0.4",
-    "clarinet": "^0.11.0",
-    "escape-regexp-component": "^1.0.2",
-    "eventemitter2": "^0.4.14",
-    "fs-extra": "^0.30.0",
-    "glob": "^7.0.5",
-    "jsondiffpatch": "^0.1.36",
-    "lodash": "^3.10.1",
-    "require.async": "^0.1.1",
-    "traverse": "^0.6.6",
-    "codeblock": "^0.2.2"
-  },
-  "devDependencies": {
-    "mocha": "^2.3.0"
-  },
-  "scripts": {
-    "test": "mocha tests/*.js"
-  }
+    "name": "ccjson",
+    "version": "0.1.4",
+    "main": "ccjson.js",
+    "dependencies": {
+        "JSONPath": "brettz9/JSONPath#19b6a87041",
+        "bluebird": "^3.0.5",
+        "canonical-json": "0.0.4",
+        "clarinet": "^0.11.0",
+        "escape-regexp-component": "^1.0.2",
+        "eventemitter2": "^0.4.14",
+        "fs-extra": "^0.30.0",
+        "glob": "^7.0.5",
+        "jsondiffpatch": "^0.1.36",
+        "lodash": "^3.10.1",
+        "require.async": "^0.1.1",
+        "traverse": "^0.6.6",
+        "codeblock": "^0.2.2"
+    },
+    "devDependencies": {
+        "mocha": "^2.3.0"
+    },
+    "scripts": {
+        "test": "mocha tests/*.js"
+    }
 }
