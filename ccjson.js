@@ -3,6 +3,11 @@ require("require.async")(require);
 
 const TRAVERSE = require("traverse");
 
+
+const CODEBLOCK = require("codeblock");
+CODEBLOCK.patchGlobalRequire();
+
+
 const api = {};
 
 api.makeLib = function () {
@@ -103,6 +108,22 @@ api.forLib = function (LIB) {
                 return impl.forLib.call(ccjson, LIB);
             }));
         }
+        function initCodeblockEntityImplementation (codeblock) {
+            // TODO: Use 'codeblock._checksum'
+            var cacheKey = JSON.stringify(codeblock);
+            if (entityImplementations[cacheKey]) {
+                return entityImplementations[cacheKey];
+            }
+            return (entityImplementations[cacheKey] = LIB.Promise.try(function () {
+                return CODEBLOCK.compileAll(CODEBLOCK.thawFromJSON({
+                    "entity": codeblock
+                })).entity.run({
+                    LIB: LIB
+                }, {
+                    "this": ccjson
+                });
+            }));
+        }
 
         ccjson.parseFile = function (path, options) {
             options = options || {};
@@ -163,6 +184,51 @@ api.forLib = function (LIB) {
                     return config;
                 }
             }
+
+            Entity.prototype._postInit = function () {
+                var self = this;
+                return self.waitForImplementation().then(function () {
+
+                    // Wait for all mappings to be parsed.
+                    return LIB.Promise.all(Object.keys(self.declarations.mappings).map(function (alias) {
+                        return self.declarations.mappings[alias].parsed.promise.timeout(10 * 1000).catch(LIB.Promise.TimeoutError, function (err) {
+                            console.error("Parsing of mapping '" + alias + "' from file '" + path + "' did not complete in time!");
+                            throw err;
+                        }).then(function () {
+                            return self.declarations.mappings[alias].waitForImplementation();
+                        });
+                    })).then(function () {
+
+                        // Wait for all instances.
+                        return LIB.Promise.all(Object.keys(self.declarations.instances).map(function (alias) {
+                            return self.declarations.instances[alias].waitForImplementation();
+                        })).then(function () {
+
+                            // Wait for all inherited implementations to be parsed.
+                            return LIB.Promise.all(self.declarations.inherited.map(function (entity) {
+                                return entity.parsed.promise.then(function () {
+                                    return entity.waitForImplementation();
+                                });
+                            })).then(function () {
+
+                                // Indicate that we are all done with parsing.
+                                self.parsed.resolve();
+                                return null;
+                            });
+                        });
+                    });
+                });
+            }
+
+            Entity.prototype.initUsingCodeblock = function (codeblock, options, callingArgs, depth) {
+                var self = this;
+
+                // TODO: Support multiple implementations that get merged
+                self.implementation = initCodeblockEntityImplementation(codeblock);
+
+                return self._postInit();
+            }
+
             Entity.prototype.parse = function (path, options, callingArgs, depth) {
                 var self = this;
 
@@ -197,10 +263,20 @@ api.forLib = function (LIB) {
                 parser.on("EntityImplementation", function (info) {
                     if (DEBUG) console.log("EVENT: EntityImplementation (registerEntityImplementation):", info);
 
-                    // TODO: Support multiple implementations that get merged
-                    self.implementation = loadEntityImplementation(
-                        LIB.path.resolve(LIB.path.dirname(path), info.path)
-                    );
+                    if (info.codeblock) {
+                        // We have an inline codeblock instead of a module path
+
+                        // TODO: Support multiple implementations that get merged
+                        self.implementation = initCodeblockEntityImplementation(info.codeblock);
+
+                    } else {
+                        // We have a module path
+
+                        // TODO: Support multiple implementations that get merged
+                        self.implementation = loadEntityImplementation(
+                            LIB.path.resolve(LIB.path.dirname(path), info.path)
+                        );
+                    }
                 });
 
                 parser.on("EntityConfig", function (info) {
@@ -217,14 +293,28 @@ api.forLib = function (LIB) {
                 parser.on("MappedEntityPointer", function (info) {
                     if (DEBUG) console.log("EVENT: MappedEntityPointer:", info);
 
-                    // NOTE: We do not need to wait for this promise as we wait
-                    //       after parsing our entity for all mappings to finish parsing.
-                    getMapping(info.entityAlias).parse(
-                        LIB.path.resolve(LIB.path.dirname(path), info.path),
-                        options,
-                        callingArgs,
-                        depth + 1
-                    );
+                    if (info.codeblock) {
+                        // We have an inline codeblock instead of an entity path
+
+                        getMapping(info.entityAlias).initUsingCodeblock(
+                            info.codeblock,
+                            options,
+                            callingArgs,
+                            depth + 1
+                        );
+
+                    } else {
+                        // We have an entity path
+
+                        // NOTE: We do not need to wait for this promise as we wait
+                        //       after parsing our entity for all mappings to finish parsing.
+                        getMapping(info.entityAlias).parse(
+                            LIB.path.resolve(LIB.path.dirname(path), info.path),
+                            options,
+                            callingArgs,
+                            depth + 1
+                        );
+                    }
                 });
 
                 parser.on("MappedEntityConfig", function (info) {
@@ -317,38 +407,7 @@ api.forLib = function (LIB) {
 
 //console.log("all parsed for entity:", path);
 
-                    return self.waitForImplementation();
-
-                }).then(function () {
-
-                    // Wait for all mappings to be parsed.
-                    return LIB.Promise.all(Object.keys(self.declarations.mappings).map(function (alias) {
-                        return self.declarations.mappings[alias].parsed.promise.timeout(10 * 1000).catch(LIB.Promise.TimeoutError, function (err) {
-                            console.error("Parsing of mapping '" + alias + "' from file '" + path + "' did not complete in time!");
-                            throw err;
-                        }).then(function () {
-                            return self.declarations.mappings[alias].waitForImplementation();
-                        });
-                    })).then(function () {
-
-                        // Wait for all instances.
-                        return LIB.Promise.all(Object.keys(self.declarations.instances).map(function (alias) {
-                            return self.declarations.instances[alias].waitForImplementation();
-                        })).then(function () {
-
-                            // Wait for all inherited implementations to be parsed.
-                            return LIB.Promise.all(self.declarations.inherited.map(function (entity) {
-                                return entity.parsed.promise.then(function () {
-                                    return entity.waitForImplementation();
-                                });
-                            })).then(function () {
-
-                                // Indicate that we are all done with parsing.
-                                self.parsed.resolve();
-                                return null;
-                            });
-                        });
-                    });
+                    return self._postInit();
                 });
             }
 

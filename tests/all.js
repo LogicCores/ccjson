@@ -27,6 +27,9 @@ var TESTS = {
     "12": true,
     "13": true,
     "14": true,
+    "15": true,
+    "16": true,
+    "17": true,
     "99.01": true,
     "99.02": true,
     "99.03": true
@@ -846,6 +849,133 @@ describe('ccjson', function() {
                 }
             });
 
+            return done();
+        }).catch(done);
+    });
+
+    if (TESTS["15"])
+    it('15-Codeblock-InModule', function (done) {
+        var ccjson = new CCJSON();
+        return ccjson.parseFile(
+            PATH.join(__dirname, "15-Codeblock-InModule/config.ccjson")
+        ).then(function (config) {
+
+            delete config.prototype.getInstance;
+            makeTestable("@entities", config.prototype["@entities"]);
+            makeTestable("@instances", config.prototype["@instances"]);
+            var proto = {
+                "@instances": [
+                    "inst1"
+                ],
+                "@instances.order": [
+                    "inst1"
+                ]
+            };
+
+            ASSERT.deepEqual(config.prototype, {
+                "config": {},
+                "@entities": {
+                    "entity": EXPECTATIONS["01-EntityImplementation"]({
+                        _entity: '15-Codeblock-InModule/entity'
+                    }, proto)
+                },
+                "@instances": {
+                    "inst1": EXPECTATIONS["01-EntityImplementation"]({
+                        _entity: '15-Codeblock-InModule/entity',
+                        "config": {
+                            "$alias": "inst1"
+                        }
+                    }, proto)
+                }
+            });
+            return done();
+        }).catch(done);
+    });
+
+    if (TESTS["16"])
+    it('16-Codeblock-InEntity', function (done) {
+        var ccjson = new CCJSON();
+        return ccjson.parseFile(
+            PATH.join(__dirname, "16-Codeblock-InEntity/config.ccjson"),
+            {
+                enabled: {
+                    codeblock: true
+                }
+            }
+        ).then(function (config) {
+
+            delete config.prototype.getInstance;
+            makeTestable("@entities", config.prototype["@entities"]);
+            makeTestable("@instances", config.prototype["@instances"]);
+            var proto = {
+                "@instances": [
+                    "inst1"
+                ],
+                "@instances.order": [
+                    "inst1"
+                ]
+            };
+
+            ASSERT.deepEqual(config.prototype, {
+                "config": {},
+                "@entities": {
+                    "entity": EXPECTATIONS["01-EntityImplementation"]({
+                        _entity: '16-Codeblock-InEntity/entity'
+                    }, proto)
+                },
+                "@instances": {
+                    "inst1": EXPECTATIONS["01-EntityImplementation"]({
+                        _entity: '16-Codeblock-InEntity/entity',
+                        "config": {
+                            "$alias": "inst1"
+                        }
+                    }, proto)
+                }
+            });
+            return done();
+        }).catch(done);
+    });
+
+    if (TESTS["17"])
+    it('17-Codeblock-InConfig', function (done) {
+        var ccjson = new CCJSON();
+        return ccjson.parseFile(
+            PATH.join(__dirname, "17-Codeblock-InConfig/config.ccjson"),
+            {
+                enabled: {
+                    codeblock: true
+                }
+            }
+        ).then(function (config) {
+
+            delete config.prototype.getInstance;
+            makeTestable("@entities", config.prototype["@entities"]);
+            makeTestable("@instances", config.prototype["@instances"]);
+            var proto = {
+                "@instances": [
+                    "inst1"
+                ],
+                "@instances.order": [
+                    "inst1"
+                ]
+            };
+
+            ASSERT.deepEqual(config.prototype, {
+                "config": {},
+                "@entities": {
+                    "entity": EXPECTATIONS["01-EntityImplementation"]({
+                        _entity: '17-Codeblock-InConfig/entity'
+                    }, proto)
+                },
+                "@instances": {
+                    "inst1": EXPECTATIONS["01-EntityImplementation"]({
+                        _entity: '17-Codeblock-InConfig/entity',
+                        "config": {
+                            "$alias": "inst1"
+                        }
+                    }, proto)
+                }
+            });
             return done();
         }).catch(done);
     });

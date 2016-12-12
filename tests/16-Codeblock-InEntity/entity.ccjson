@@ -1,0 +1,52 @@
+{
+    "$": (javascript (LIB) >>>
+
+        return LIB.Promise.resolve({
+            forConfig: function (defaultConfig) {
+
+                var Entity = function (instanceConfig) {
+                    var self = this;
+
+                    self.toString = function () {
+                        var obj = {};
+                        LIB._.merge(obj, LIB._.cloneDeep(self.__proto__));
+                        LIB._.merge(obj, LIB._.cloneDeep({
+                            config: instanceConfig
+                        }));
+                        return obj;
+                    }
+                    self.getAt = function (path) {
+                        var obj = {};
+                        LIB._.merge(obj, LIB._.cloneDeep(self.__proto__.config));
+                        LIB._.merge(obj, LIB._.cloneDeep(instanceConfig));
+                        return LIB.traverse(obj).get(path);
+                    }
+                }
+                Entity.prototype._entity = "16-Codeblock-InEntity/entity";
+                Entity.prototype.config = defaultConfig;
+
+                return Entity;
+            }
+        });
+
+    <<<),
+    "default": "value",
+    "int": 1,
+    "bool": true,
+    "obj": {
+        "key": "val",
+        "array": [
+            "string",
+            true,
+            {
+                "nested": {
+                    "deep": true,
+                    "obj": {}
+                }
+            },
+            10
+        ],
+        "another": "value"
+    },
+    "me": "too"
+}

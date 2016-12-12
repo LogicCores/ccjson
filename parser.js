@@ -5,7 +5,7 @@ exports.forLib = function (LIB) {
     const ESCAPE_REGEXP = require("escape-regexp-component");
 
 
-    const VERBOSE = true;
+    const VERBOSE = false;
 
 
     var Parser = function (path, options, callingArgs, depth) {
@@ -66,9 +66,11 @@ exports.forLib = function (LIB) {
 
         self.parse = function () {
 
-        //console.log("\n\n---------------------------------------------------");
-        //console.log("PARSE CJSON FILE:", path);
-        //console.log("---------------------------------------------------");
+            if (VERBOSE) {
+                console.log("\n\n---------------------------------------------------");
+                console.log("PARSE CJSON FILE:", path);
+                console.log("---------------------------------------------------");
+            }
 
             return ensurePath(path).then(function (path) {
 
@@ -141,6 +143,11 @@ exports.forLib = function (LIB) {
                                 if (Array.isArray(currentPointer)) {
                                     currentPointer.push(value);
                                 } else {
+                                    // TODO: Attach these to the Error object.
+                                    console.error("value", value);
+                                    console.error("valueMeta", valueMeta);
+                                    console.error("currentKey", currentKey);
+                                    console.error("currentPointer", currentPointer);
                                     throw new Error("Don't know how to attach value '" + value + "'");
                                 }
                                 currentPath.pop();
@@ -212,7 +219,9 @@ exports.forLib = function (LIB) {
 
                             try {
 
-//console.log("\n\n** (" + depth + ") DRAIN TOKEN type:", type, "  value:", value, "  section:", current.section, "  depth:", current.depth, "  entityAlias:", current.entityAlias);
+                                if (VERBOSE) {
+                                    console.log("\n\n** " + LIB.path.basename(path) + " (" + depth + ") DRAIN TOKEN type:", type, "  value:", value, "  section:", current.section, "  depth:", current.depth, "  entityAlias:", current.entityAlias);
+                                }
 
                                 function passToBuffer () {
 //console.log("PASS TO BUFFER");
@@ -275,11 +284,47 @@ exports.forLib = function (LIB) {
                                     }
 
                                 } else
+                                if (current.section === "codeblock") {
+
+                                    var buffer = passToBuffer();
+                                    if (
+                                        buffer.hasEnded() &&
+                                        type === "closeobject"
+                                    ) {
+                                        if (current.codeblockSection === "implementation") {
+                                            self.emit("EntityImplementation", {
+                                                codeblock: buffer.config
+                                            });
+                                            current.section = null;
+                                        } else
+                                        if (current.codeblockSection === "mapping-entity-pointer") {
+                                            self.emit("MappedEntityPointer", {
+                                                entityAlias: current.entityAlias,
+                                                codeblock: buffer.config
+                                            });
+                                            current.section = "mapping";
+                                        } else {
+                                            throw new Error("Codeblock section '" + current.codeblockSection + "' not implemented!");
+                                        }
+                                        current.codeblockSection = null;
+                                        buffer.destroy();
+                                    }
+                                    return;
+
+                                } else
                                 if (current.section === "implementation") {
-                                    self.emit("EntityImplementation", {
-                                        path: value
-                                    });
-                                    current.section = null;
+                                    // TODO: Make '.@' key configurable.
+                                    if (value === ".@") {
+                                        // We have an inline codeblock implementation.
+                                        current.section = "codeblock";
+                                        current.codeblockSection = "implementation";
+                                        passToBuffer();
+                                    } else {
+                                        self.emit("EntityImplementation", {
+                                            path: value
+                                        });
+                                        current.section = null;
+                                    }
                                     return;
                                 } else
                                 if (current.section === "@") {
@@ -345,7 +390,15 @@ exports.forLib = function (LIB) {
                                     } else {
                                         var buffer = passToBuffer();
                                         if (type === "closeobject") {
-                                            if (buffer.hasEnded()) {
+                                            if (
+                                                buffer.hasEnded() &&
+                                                (
+                                                    // Multiple entities without custom config.
+                                                    (buffer.isEmpty() && current.bufferStartDepth === current.depth) ||
+                                                    // Single entity or multiple entities with custom config.
+                                                    (current.bufferStartDepth === current.depth + 1)
+                                                )
+                                            ) {
                                                 self.emit("MappedEntityConfig", {
                                                     entityAlias: current.entityAlias,
                                                     config: buffer.config
@@ -366,6 +419,16 @@ exports.forLib = function (LIB) {
                                             path: value
                                         });
                                         current.section = "mapping";
+                                        return;
+                                    } else
+                                    if (
+                                        type === "openobject" &&
+                                        value === ".@"
+                                    ) {
+                                        // We have an inline codeblock implementation.
+                                        current.section = "codeblock";
+                                        current.codeblockSection = "mapping-entity-pointer";
+                                        passToBuffer();
                                         return;
                                     }
                                 } else
@@ -671,9 +734,36 @@ exports.forLib = function (LIB) {
                             return resolve();
                         });
 
-                        // pipe is supported, and it's readable/writable
-                        // same chunks coming in also go out.
-                        LIB.fs.createReadStream(path).pipe(stream);
+
+                        function feedStreamFromPath (path) {
+                            LIB.fs.createReadStream(path).pipe(stream);
+                        }
+
+                        if (
+                            options.enabled &&
+                            options.enabled.codeblock
+                        ) {
+                            // If codeblocks are enabled we first parse the file,
+                            // freeze all codeblocks to JSON and write it to a frozen path.
+                            // We then parse the frozen JSON and where frozen codeblocks
+                            // are encountered they are thawed and compiled, then executed.
+                            // If codeblocks are encountered to implement entities instead
+                            // of a URI to an entity module, they are executed and then
+                            // instaciated as if they were external entity modules.
+
+                            const CODEBLOCK = require("codeblock");
+
+                            var purified = CODEBLOCK.purifySync(path, {
+                                freezeToJSON: true
+                            });
+
+                            return feedStreamFromPath(
+                                purified.purifiedPath ||
+                                purified.sourcePath
+                            );
+                        }
+
+                        return feedStreamFromPath(path);
 
                     } catch (err) {
                         return reject(err);
