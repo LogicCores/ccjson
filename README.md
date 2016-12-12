@@ -1,6 +1,8 @@
 ccjson
 ======
 
+[![CircleCI](https://circleci.com/gh/LogicCores/ccjson.svg?style=svg)](https://circleci.com/gh/LogicCores/ccjson)
+
 ## Canonical Contractual JSON
 
 > Ordered & animated JSON unlocks a world of possibilities!
