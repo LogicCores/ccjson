@@ -95,16 +95,29 @@ api.forLib = function (LIB) {
 */
 
         var entityImplementations = {};
-        function loadEntityImplementation (path) {
+        function loadEntityImplementation (path, options) {
             if (entityImplementations[path]) {
                 return entityImplementations[path];
             }
             return (entityImplementations[path] = new LIB.Promise(function (resolve, reject) {
+                if (
+                    options.on &&
+                    options.on.loadEntityImplementation
+                ) {
+                    try {
+                        return resolve(options.on.loadEntityImplementation(path));
+                    } catch (err) {
+                        return reject(err);
+                    }
+                }
                 return require.async(path, resolve, function (err) {
                     console.error("Error loading '" + path + "'");
                     return reject(err);
                 });
             }).then(function (impl) {
+                if (!impl.forLib) {
+                    throw new Error("Entity at '" + path + "' does not export 'forLib'!");
+                }
                 return impl.forLib.call(ccjson, LIB);
             }));
         }
@@ -263,6 +276,8 @@ api.forLib = function (LIB) {
                 parser.on("EntityImplementation", function (info) {
                     if (DEBUG) console.log("EVENT: EntityImplementation (registerEntityImplementation):", info);
 
+//console.log("LOAD", parser.path, info.path, info.codeblock);
+
                     if (info.codeblock) {
                         // We have an inline codeblock instead of a module path
 
@@ -274,7 +289,8 @@ api.forLib = function (LIB) {
 
                         // TODO: Support multiple implementations that get merged
                         self.implementation = loadEntityImplementation(
-                            LIB.path.resolve(LIB.path.dirname(path), info.path)
+                            LIB.path.resolve(LIB.path.dirname(parser.path), info.path),
+                            options
                         );
                     }
                 });
@@ -306,10 +322,16 @@ api.forLib = function (LIB) {
                     } else {
                         // We have an entity path
 
+                        var entityPath = info.path;
+                        // Make absolute if relative
+                        if (/^\./.test(entityPath)) {
+                            entityPath = LIB.path.resolve(LIB.path.dirname(path), info.path);
+                        }
+
                         // NOTE: We do not need to wait for this promise as we wait
                         //       after parsing our entity for all mappings to finish parsing.
                         getMapping(info.entityAlias).parse(
-                            LIB.path.resolve(LIB.path.dirname(path), info.path),
+                            entityPath,
                             options,
                             callingArgs,
                             depth + 1

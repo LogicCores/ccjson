@@ -76,6 +76,8 @@ exports.forLib = function (LIB) {
 
                 if (!path) return null;
 
+                self.path = path;
+
                 return new LIB.Promise(function (resolve, reject) {
 
 //console.log("parseFile ("+ path +")");
